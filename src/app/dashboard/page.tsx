@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { DashboardSidebar } from "@/components/dashboard/Sidebar";
+import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
 
 function daysUntilExam(alYear: number) {
   // A/L written papers typically fall in Q3; use Aug 1 of the exam year as a placeholder target.
@@ -28,13 +30,13 @@ export default async function DashboardPage() {
     .map((row) => row.subjects)
     .flat() as { id: string; name: string }[];
 
-  // Compute per-subject progress from topic_progress
   const subjectProgress: { id: string; name: string; percent: number; topicCount: number }[] = [];
+  const revisionNeeded: { subject: string; topic: string }[] = [];
 
   for (const subject of subjects) {
     const { data: topics } = await supabase
       .from("syllabus_topics")
-      .select("id, syllabus_units!inner(subject_id)")
+      .select("id, title, syllabus_units!inner(subject_id)")
       .eq("syllabus_units.subject_id", subject.id);
 
     const topicIds = (topics ?? []).map((t) => t.id);
@@ -43,12 +45,19 @@ export default async function DashboardPage() {
     if (topicIds.length > 0) {
       const { data: progressRows } = await supabase
         .from("topic_progress")
-        .select("percent")
+        .select("topic_id, status, percent")
         .eq("student_id", profile.id)
         .in("topic_id", topicIds);
 
       const sum = (progressRows ?? []).reduce((acc, r) => acc + (r.percent ?? 0), 0);
-      percent = Math.round(sum / topicIds.length);
+      percent = topicIds.length > 0 ? Math.round(sum / topicIds.length) : 0;
+
+      for (const row of progressRows ?? []) {
+        if (row.status === "weak" || row.status === "needs_revision") {
+          const topic = (topics ?? []).find((t) => t.id === row.topic_id);
+          if (topic) revisionNeeded.push({ subject: subject.name, topic: topic.title });
+        }
+      }
     }
 
     subjectProgress.push({ id: subject.id, name: subject.name, percent, topicCount: topicIds.length });
@@ -58,50 +67,100 @@ export default async function DashboardPage() {
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-14">
-      <h1 className="stat-serif text-4xl mb-1">Good to see you, {firstName}.</h1>
-      <p className="text-ink-soft text-sm mb-10">Ready to continue your A/L journey?</p>
+    <div className="max-w-6xl mx-auto px-6 flex gap-8">
+      <DashboardSidebar activeHref="/dashboard" />
 
-      <div className="clay p-6 mb-10 flex items-center justify-between">
+      <div className="flex-1 min-w-0 py-8 grid lg:grid-cols-[1fr_280px] gap-8">
+        {/* Main column */}
         <div>
-          <p className="text-sm text-ink-soft">G.C.E. A/L {profile.al_year}</p>
-          <p className="stat-serif text-3xl text-ink mt-1">
-            {daysLeft > 0 ? `${daysLeft} days remaining` : "Exam window has begun"}
-          </p>
-        </div>
-        <Link href="/onboarding" className="text-sm text-ink-soft hover:text-ink border-b border-rule hover:border-ink pb-0.5">
-          Edit
-        </Link>
-      </div>
+          <div className="clay p-7 mb-8 flex items-center justify-between gap-6">
+            <div>
+              <h1 className="stat-serif text-3xl mb-1.5">Good to see you, {firstName}.</h1>
+              <p className="text-ink-soft text-sm">Ready to continue your A/L journey?</p>
+            </div>
+            <div className="hidden sm:block text-right shrink-0">
+              <p className="text-xs text-ink-faint mb-0.5">G.C.E. A/L {profile.al_year}</p>
+              <p className="stat-serif text-2xl text-cobalt">
+                {daysLeft > 0 ? `${daysLeft} days` : "Exam window"}
+              </p>
+            </div>
+          </div>
 
-      <h2 className="text-sm font-medium text-ink-soft mb-4">Your subjects</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-ink-soft">Your subjects</h2>
+            <Link href="/onboarding" className="text-xs text-ink-faint hover:text-ink">
+              Edit subjects
+            </Link>
+          </div>
 
-      {subjectProgress.length === 0 ? (
-        <div className="border border-dashed border-rule rounded-2xl p-8 text-center">
-          <p className="text-ink-soft text-sm mb-4">You haven&rsquo;t selected any subjects yet.</p>
-          <Link href="/onboarding" className="btn-primary inline-block px-5 py-2.5 rounded-full text-sm font-medium">
-            Choose subjects
-          </Link>
-        </div>
-      ) : (
-        <ul className="border-t border-rule">
-          {subjectProgress.map((s) => (
-            <li key={s.id} className="border-b border-rule py-5">
-              <Link href={`/subjects/${s.id}`} className="flex items-center justify-between group">
-                <div className="flex-1 pr-8">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="font-medium group-hover:text-cobalt transition-colors">{s.name}</span>
-                    <span className="text-ink-faint">{s.topicCount > 0 ? `${s.percent}%` : "No syllabus yet"}</span>
-                  </div>
-                  {s.topicCount > 0 && (
-                    <div className="highlight-bar" style={{ ["--pct" as string]: `${s.percent}%` }} />
-                  )}
-                </div>
+          {subjectProgress.length === 0 ? (
+            <div className="border border-dashed border-rule rounded-2xl p-8 text-center">
+              <p className="text-ink-soft text-sm mb-4">You haven&rsquo;t selected any subjects yet.</p>
+              <Link href="/onboarding" className="btn-primary inline-block px-5 py-2.5 rounded-full text-sm font-medium">
+                Choose subjects
               </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-4">
+              {subjectProgress.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/subjects/${s.id}`}
+                  className="clay p-5 hover:border-cobalt/30 transition-colors block"
+                >
+                  <div className="flex justify-between text-sm mb-3">
+                    <span className="font-medium">{s.name}</span>
+                    <span className="text-ink-faint">{s.topicCount > 0 ? `${s.percent}%` : "—"}</span>
+                  </div>
+                  {s.topicCount > 0 ? (
+                    <div className="highlight-bar" style={{ ["--pct" as string]: `${s.percent}%` }} />
+                  ) : (
+                    <p className="text-xs text-ink-faint">No syllabus content yet</p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right panel */}
+        <div className="space-y-6">
+          <div className="clay p-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-cobalt/10 mx-auto mb-3 flex items-center justify-center">
+              <span className="stat-serif text-xl text-cobalt">
+                {(profile.full_name ?? "S")[0].toUpperCase()}
+              </span>
+            </div>
+            <p className="font-medium text-sm">{profile.full_name}</p>
+            <p className="text-xs text-ink-faint capitalize">{profile.role} · {profile.medium}</p>
+          </div>
+
+          <div className="clay p-6">
+            <MiniCalendar />
+          </div>
+
+          <div className="clay p-6">
+            <p className="text-sm font-medium mb-3">Needs revision</p>
+            {revisionNeeded.length === 0 ? (
+              <p className="text-xs text-ink-faint">
+                Nothing flagged yet — mark topics as &ldquo;weak&rdquo; or &ldquo;needs revision&rdquo; in your syllabus tracker and they&rsquo;ll show up here.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {revisionNeeded.slice(0, 5).map((r, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-butter mt-1 shrink-0" />
+                    <span>
+                      <span className="text-ink">{r.topic}</span>
+                      <span className="text-ink-faint"> · {r.subject}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
