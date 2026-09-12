@@ -1,0 +1,31 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+
+export async function submitQuestionAttempt(
+  questionId: string,
+  subjectId: string,
+  selectedIndex: number,
+  correctIndex: number
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const isCorrect = selectedIndex === correctIndex;
+
+  await supabase.from("question_attempts").insert({
+    student_id: user.id,
+    question_id: questionId,
+    selected_index: selectedIndex,
+    is_correct: isCorrect,
+  });
+
+  revalidatePath(`/subjects/${subjectId}/practice`);
+  return { isCorrect };
+}

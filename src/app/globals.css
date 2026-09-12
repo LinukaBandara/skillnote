@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Indigo/violet palette, lavender-gray background — matches reference dashboard */
+  --cobalt: #4F5FE0;
+  --cobalt-deep: #333F9E;
+  --cobalt-bright: #6C7EF0;
+  --lilac: #8B7FE8;
+  --butter: #E8748C;
+  --bg-warm: #EBECF5;
+  --surface: #FFFFFF;
+  --ink: #1A2246;
+  --ink-soft: #8891A5;
+  --ink-faint: #AEB4C4;
+  --rule: #E3E5F2;
+
+  --paper: var(--surface);
+  --amber: var(--butter);
+  --sage: #2F8F65;
+}
+
+@theme inline {
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-deep: var(--cobalt-deep);
+  --color-cobalt-bright: var(--cobalt-bright);
+  --color-lilac: var(--lilac);
+  --color-butter: var(--butter);
+  --color-bg-warm: var(--bg-warm);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-paper: var(--paper);
+  --color-amber: var(--amber);
+  --color-sage: var(--sage);
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Instrument Serif', serif;
+}
+
+body {
+  background: var(--bg-warm);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+/* Editorial numeral / stat treatment — quiet serif italic, not a UI font */
+.stat-serif {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Quiet surface: thin hairline, faint shadow — depth without noise */
+.clay {
+  background: var(--surface);
+  border-radius: 20px;
+  border: 1px solid var(--rule);
+  box-shadow: 0 1px 2px rgba(26, 34, 70, 0.04), 0 16px 32px -16px rgba(79, 95, 224, 0.18);
+}
+
+.clay-inset {
+  background: var(--bg-warm);
+  border-radius: 14px;
+}
+
+.btn-primary {
+  background: var(--cobalt);
+  color: white;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--cobalt-deep);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-outline {
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.btn-outline:hover {
+  border-color: var(--ink-faint);
+  background: var(--surface);
+}
+
+.highlight-bar {
+  background: linear-gradient(90deg, var(--cobalt) var(--pct, 0%), var(--rule) var(--pct, 0%));
+  height: 3px;
+  border-radius: 999px;
+}
+
+.hairline {
+  border-color: var(--rule);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
