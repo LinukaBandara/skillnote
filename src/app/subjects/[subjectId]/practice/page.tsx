@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PracticeClient } from "./PracticeClient";
 import { PracticeFilters } from "./PracticeFilters";
+import { languageFallbackChain } from "@/types/language";
 
 type Mode = "all" | "adaptive" | "weak" | "revision";
 
@@ -14,6 +15,18 @@ const MODES: { key: Mode; label: string; blurb: string }[] = [
   { key: "weak", label: "Weak areas", blurb: "Topics where your mastery is below 50%." },
   { key: "revision", label: "Due for revision", blurb: "Topics scheduled for review today." },
 ];
+
+function localizedTitle(
+  rows: { language_code: string; title: string | null }[] | null,
+  language: "en" | "si" | "ta",
+  fallback: string,
+) {
+  for (const code of languageFallbackChain(language)) {
+    const row = rows?.find((item) => item.language_code === code);
+    if (row?.title) return row.title;
+  }
+  return fallback;
+}
 
 export default async function PracticePage({
   params,
@@ -28,6 +41,7 @@ export default async function PracticePage({
 
   const supabase = await createClient();
   const profile = await getCurrentProfile();
+  const language = profile?.preferred_language ?? "en";
 
   const { data: subject } = await supabase.from("subjects").select("*").eq("id", subjectId).single();
   if (!subject) notFound();
@@ -37,19 +51,27 @@ export default async function PracticePage({
     .select("id, title, syllabus_units!inner(subject_id)")
     .eq("syllabus_units.subject_id", subjectId);
 
-  const subjectTopicIds = (topics ?? []).map((t) => t.id);
+  const topicIds = (topics ?? []).map((t) => t.id);
+  const { data: topicTranslations } = topicIds.length
+    ? await supabase.from("syllabus_topic_translations").select("topic_id, language_code, title").in("topic_id", topicIds)
+    : { data: [] as { topic_id: string; language_code: string; title: string | null }[] };
+
+  const translationMap = new Map<string, { language_code: string; title: string | null }[]>();
+  for (const row of topicTranslations ?? []) {
+    const existing = translationMap.get(row.topic_id) ?? [];
+    existing.push(row);
+    translationMap.set(row.topic_id, existing);
+  }
+
+  const subjectTopicIds = topicIds;
 
   const { data: yearsRaw } = await supabase
     .from("questions")
     .select("year")
     .eq("subject_id", subjectId)
     .not("year", "is", null);
-  const years = Array.from(new Set((yearsRaw ?? []).map((r) => r.year))).sort(
-    (a, b) => (b ?? 0) - (a ?? 0)
-  );
+  const years = Array.from(new Set((yearsRaw ?? []).map((r) => r.year))).sort((a, b) => (b ?? 0) - (a ?? 0));
 
-  // Mastery drives the adaptive / weak / revision modes. Real data only —
-  // if the student has no history these modes fall back to an explicit empty state.
   let mastery: { topic_id: string; mastery: number; due_at: string }[] = [];
   if (profile && subjectTopicIds.length > 0) {
     const { data } = await supabase
@@ -60,10 +82,7 @@ export default async function PracticePage({
     mastery = data ?? [];
   }
 
-  const avgMastery =
-    mastery.length > 0
-      ? Math.round(mastery.reduce((a, m) => a + m.mastery, 0) / mastery.length)
-      : null;
+  const avgMastery = mastery.length > 0 ? Math.round(mastery.reduce((a, m) => a + m.mastery, 0) / mastery.length) : null;
 
   let query = supabase.from("questions").select("*").eq("subject_id", subjectId);
   if (topic) query = query.eq("topic_id", topic);
@@ -71,7 +90,6 @@ export default async function PracticePage({
   if (difficulty) query = query.eq("difficulty", difficulty);
 
   if (mode === "adaptive" && avgMastery !== null) {
-    // Below 50% mastery → reinforce with easier questions; strong → push harder.
     const target = avgMastery < 50 ? "easy" : avgMastery < 75 ? "medium" : "hard";
     query = query.eq("difficulty", target);
   } else if (mode === "weak") {
@@ -83,7 +101,6 @@ export default async function PracticePage({
   }
 
   const { data: questions } = await query;
-
   const activeMode = MODES.find((m) => m.key === mode)!;
 
   const buildHref = (m: Mode) => {
@@ -96,6 +113,11 @@ export default async function PracticePage({
     return `/subjects/${subjectId}/practice${qs ? `?${qs}` : ""}`;
   };
 
+  const filterTopics = (topics ?? []).map((t) => ({
+    id: t.id,
+    title: localizedTitle(translationMap.get(t.id) ?? null, language, t.title),
+  }));
+
   return (
     <MaybeShell isLoggedIn={!!profile} isStaff={profile ? profile.role !== "student" : false} activeHref="/practice">
       <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">{subject.name} practice</h1>
@@ -104,15 +126,7 @@ export default async function PracticePage({
       {profile && (
         <div className="flex flex-wrap gap-2 mb-6">
           {MODES.map((m) => (
-            <Link
-              key={m.key}
-              href={buildHref(m.key)}
-              className={`text-xs px-3.5 py-2 rounded-full border transition-colors ${
-                m.key === mode
-                  ? "bg-ink text-white border-ink"
-                  : "border-rule text-ink-soft hover:border-ink-faint"
-              }`}
-            >
+            <Link key={m.key} href={buildHref(m.key)} className={`text-xs px-3.5 py-2 rounded-full border transition-colors ${m.key === mode ? "bg-ink text-white border-ink" : "border-rule text-ink-soft hover:border-ink-faint"}`}>
               {m.label}
             </Link>
           ))}
@@ -123,9 +137,7 @@ export default async function PracticePage({
         <div className="clay p-4 mb-6 flex items-center justify-between">
           <div>
             <p className="section-label mb-1">Your mastery in {subject.name}</p>
-            <p className="text-xs text-ink-faint">
-              Based on {mastery.length} tracked topic{mastery.length === 1 ? "" : "s"}
-            </p>
+            <p className="text-xs text-ink-faint">Based on {mastery.length} tracked topic{mastery.length === 1 ? "" : "s"}</p>
           </div>
           <p className="text-[22px] font-bold tracking-[-0.03em]">{avgMastery}%</p>
         </div>
@@ -133,7 +145,7 @@ export default async function PracticePage({
 
       <PracticeFilters
         subjectId={subjectId}
-        topics={(topics ?? []).map((t) => ({ id: t.id, title: t.title }))}
+        topics={filterTopics}
         years={years.filter((y): y is number => y !== null)}
         current={{ topic, year, difficulty }}
       />
@@ -141,17 +153,15 @@ export default async function PracticePage({
       <div className="mt-8">
         <PracticeClient
           key={`${mode}-${topic ?? ""}-${year ?? ""}-${difficulty ?? ""}`}
-          questions={
-            (questions ?? []) as unknown as {
-              id: string;
-              question_text: string;
-              options: string[];
-              correct_index: number;
-              year: number | null;
-              difficulty: string;
-              source: string | null;
-            }[]
-          }
+          questions={(questions ?? []) as unknown as {
+            id: string;
+            question_text: string;
+            options: string[];
+            correct_index: number;
+            year: number | null;
+            difficulty: string;
+            source: string | null;
+          }[]}
           subjectId={subjectId}
         />
       </div>
