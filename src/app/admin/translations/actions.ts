@@ -7,6 +7,7 @@ import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import type { PreferredLanguage } from "@/types/db";
 
 const LANGUAGES = new Set<PreferredLanguage>(["si", "ta"]);
+const STATUSES = new Set(["draft", "review", "published", "archived"]);
 
 const TABLE_CONFIG = {
   syllabus_unit_translations: { idColumn: "unit_id", required: "title", fields: ["title"] },
@@ -47,6 +48,8 @@ export async function saveTranslation(formData: FormData) {
   const payload: Record<string, unknown> = {
     [request.config.idColumn]: request.id,
     language_code: request.language,
+    translated_by: profile.id,
+    status: "draft",
   };
 
   for (const field of request.config.fields) {
@@ -60,6 +63,34 @@ export async function saveTranslation(formData: FormData) {
   await supabase
     .from(request.table)
     .upsert(payload, { onConflict: `${request.config.idColumn},language_code` });
+
+  revalidatePath("/admin/translations");
+}
+
+export async function updateTranslationStatus(formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (profile.role === "student") redirect("/dashboard");
+
+  const request = parseRequest(formData);
+  const status = formData.get("status");
+  if (!request || typeof status !== "string" || !STATUSES.has(status)) return;
+
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = { status };
+  if (status === "published" || status === "archived") {
+    patch.reviewed_by = profile.id;
+    patch.reviewed_at = new Date().toISOString();
+  } else if (status === "draft") {
+    patch.reviewed_by = null;
+    patch.reviewed_at = null;
+  }
+
+  await supabase
+    .from(request.table)
+    .update(patch)
+    .eq(request.config.idColumn, request.id)
+    .eq("language_code", request.language);
 
   revalidatePath("/admin/translations");
 }
