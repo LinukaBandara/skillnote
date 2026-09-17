@@ -5,20 +5,24 @@ import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-async function requireStaff() {
+async function requireAdmin() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role === "student") redirect("/dashboard");
+  if (profile.role !== "platform_admin" && profile.role !== "institute_admin") {
+    redirect("/dashboard");
+  }
   return profile;
 }
 
 export async function createMockExam(formData: FormData) {
-  const profile = await requireStaff();
+  const profile = await requireAdmin();
   const supabase = await createClient();
 
-  const subjectId = formData.get("subject_id") as string;
-  const title = formData.get("title") as string;
-  const durationMinutes = Number(formData.get("duration_minutes")) || 60;
+  const subjectId = String(formData.get("subject_id") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim().slice(0, 160);
+  const rawDuration = Number(formData.get("duration_minutes"));
+  const durationMinutes = Number.isInteger(rawDuration) && rawDuration > 0 && rawDuration <= 600 ? rawDuration : 60;
+  if (!subjectId || !title) return;
 
   const { data: exam } = await supabase
     .from("mock_exams")
@@ -31,8 +35,13 @@ export async function createMockExam(formData: FormData) {
 }
 
 export async function addQuestionToExam(examId: string, questionId: string) {
-  await requireStaff();
+  await requireAdmin();
+  if (!examId || !questionId) return;
   const supabase = await createClient();
+
+  const { data: exam } = await supabase.from("mock_exams").select("id, subject_id").eq("id", examId).single();
+  const { data: question } = await supabase.from("questions").select("id, subject_id").eq("id", questionId).single();
+  if (!exam || !question || exam.subject_id !== question.subject_id) return;
 
   const { count } = await supabase
     .from("mock_exam_questions")
@@ -49,7 +58,8 @@ export async function addQuestionToExam(examId: string, questionId: string) {
 }
 
 export async function removeQuestionFromExam(examId: string, questionId: string) {
-  await requireStaff();
+  await requireAdmin();
+  if (!examId || !questionId) return;
   const supabase = await createClient();
 
   await supabase
