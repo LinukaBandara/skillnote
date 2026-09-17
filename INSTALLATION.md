@@ -56,11 +56,11 @@ This installs Next.js, React, Tailwind, and the Supabase client libraries. Takes
 Create a file named `.env.local` in the project root:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://driqyqvlqhxvscvpdtck.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_Nm0KZ42aTxFplRypdvAQpw_pZXi69SR
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-publishable-key
 ```
 
-These are the **publishable** keys for the existing Skill Note Supabase project. They are safe to expose in a browser — row-level security in the database is what actually protects the data.
+Use the publishable key from the Supabase dashboard. It is safe to expose in a browser when the database is protected by correct row-level security.
 
 > **Never** put the Supabase `service_role` key in this file or anywhere in frontend code. It bypasses all security rules.
 
@@ -103,19 +103,30 @@ Put both in `.env.local`.
 
 ### 4.3 Create the database schema
 
-All tables, security policies, and functions were created through migrations. To rebuild them in a fresh project, run the SQL from the **SQL Editor** in the Supabase dashboard, in this order:
+All tables, security policies, and functions were created through migrations. To rebuild them in a fresh project, run the SQL migrations in chronological order.
+
+The current schema includes:
 
 1. **Core tables** — `profiles`, `courses`, `modules`, `lessons`, `enrollments`, `lesson_progress`, `quizzes`, `quiz_questions`, `quiz_attempts`, `certificates`, `discussion_threads`, `discussion_comments`
-2. **Row-level security** — RLS policies on all of the above, plus the `is_admin()` / `is_teacher_or_above()` / `current_institute_id()` helper functions, plus the `handle_new_user()` trigger that creates a profile row on signup
+2. **Row-level security** — RLS policies on the core tables plus the existing helper functions and signup trigger
 3. **A/L structure** — `institutes`, `streams`, `subjects`, `student_subjects`, `syllabus_units`, `syllabus_topics`, `topic_progress`
-4. **Question bank** — `questions`, `question_attempts`
-5. **Mock exams** — `mock_exams`, `mock_exam_questions`, `mock_exam_attempts`, `mock_exam_answers`
-6. **Study plan** — `study_plan_items`
-7. **Assignments** — `assignments`, `assignment_submissions` (plus the `assignment-files` storage bucket and its policies)
-8. **Notifications** — `notifications` table and the `create_notification()` function
-9. **Mastery** — `topic_mastery` table and the `update_topic_mastery()` function
+4. **Phase 1 academic foundation** — versioned syllabi, subject/version mapping, competencies, competency levels, optional subtopics, and learning outcomes
+5. **Question bank** — `questions`, `question_attempts`
+6. **Mock exams** — `mock_exams`, `mock_exam_questions`, `mock_exam_attempts`, `mock_exam_answers`
+7. **Study plan** — `study_plan_items`
+8. **Assignments** — `assignments`, `assignment_submissions` plus the `assignment-files` storage bucket and its policies
+9. **Notifications** — `notifications` and the `create_notification()` function
+10. **Mastery** — `topic_mastery` and the `update_topic_mastery()` function
 
-> If you need the exact SQL for each of these, ask and I can export them as numbered migration files. Supabase also keeps a full migration history under **Database → Migrations** in the existing project, which you can copy from directly.
+The Phase 1 migration is stored at:
+
+```text
+supabase/migrations/20260917150000_phase1_academic_foundation.sql
+```
+
+It is additive: the existing stream → subject → unit → topic structure remains valid, while new content can opt into a syllabus version and continue down to competency → competency level → subtopic → learning outcome.
+
+> Do not populate official Sri Lankan syllabus content from memory or unverified sources. Version records should identify their verified source before being treated as official content.
 
 ### 4.4 Create the storage bucket
 
@@ -131,7 +142,7 @@ Then apply the storage policies so students can upload to their own folder and s
 **Authentication → Providers → Email**
 
 - Enable **Confirm email** for production (off is easier for testing)
-- Under **Authentication → Policies**, turn on **leaked password protection** (checks against HaveIBeenPwned) — this is currently OFF and should be enabled before launch
+- Under **Authentication → Policies**, turn on **leaked password protection** — this is currently OFF and should be enabled before launch
 
 ---
 
@@ -148,11 +159,11 @@ A fresh database will have no streams, subjects, or questions. You have two opti
    ```
 3. Log out and back in. You now have access to `/admin`, where you can create institutes, courses, questions, and mock exams through the interface.
 
-Note: streams, subjects, and syllabus units/topics currently have no admin UI — those must be inserted via SQL (see Option B).
+Note: streams, subjects, and syllabus units/topics currently have no admin UI. Phase 1 adds the database foundation for versioned syllabus management; the syllabus management UI will be added separately without changing the student-facing design.
 
 ### Option B — Via SQL
 
-Insert streams (Physical Science, Biological Science, Commerce, Arts, Technology), then subjects linked to those streams, then syllabus units, then topics under each unit. Questions and mock exams can then be created through the admin UI.
+Insert streams (Physical Science, Biological Science, Commerce, Arts, Technology), then subjects linked to those streams, then syllabus versions and version/subject mappings, followed by syllabus units/topics/subtopics/learning outcomes. Questions and mock exams can then be created through the admin UI.
 
 ---
 
@@ -178,87 +189,22 @@ Once connected, every `git push` to `main` automatically triggers a new deployme
 ```bash
 git add .
 git commit -m "Your change"
-git push
+git push origin main
 ```
-
-### 6.3 Adding a custom domain
-
-**Vercel → your project → Settings → Domains → Add**
-
-Enter your domain (e.g. `skillnote.lk`), then update your DNS records at your registrar as Vercel instructs. SSL is issued automatically.
 
 ---
 
-## 7. Project structure
+## 7. Commercial launch checklist
 
-```
-skillnote/
-├── src/
-│   ├── app/
-│   │   ├── page.tsx                  Landing page
-│   │   ├── layout.tsx                Root layout (nav, footer, loading bar)
-│   │   ├── globals.css               Design tokens + shared component styles
-│   │   ├── login/  signup/           Authentication
-│   │   ├── onboarding/               A/L year, medium, subject selection
-│   │   ├── dashboard/                Student dashboard
-│   │   ├── subjects/                 Syllabus tracker, practice, mock exams
-│   │   ├── courses/                  Course delivery, lessons, quizzes, assignments
-│   │   ├── practice/                 Practice hub
-│   │   ├── study-plan/               Study planner
-│   │   ├── certificates/             Earned certificates
-│   │   ├── notifications/            In-app notifications
-│   │   ├── search/                   Global search
-│   │   ├── verify/[code]/            Public certificate verification
-│   │   ├── privacy/  terms/          Legal pages
-│   │   └── admin/                    Staff area (courses, questions, exams,
-│   │                                 students, institutes, assignments)
-│   ├── components/
-│   │   ├── Logo.tsx                  Brand mark
-│   │   ├── NavBar.tsx                Public top navigation
-│   │   ├── Footer.tsx                Public footer
-│   │   ├── LoadingScreen.tsx         Branded loading state
-│   │   └── dashboard/                AppShell, Sidebar, MobileNav, MiniCalendar
-│   ├── lib/supabase/                 Client, server, middleware, profile helpers
-│   └── types/db.ts                   TypeScript database types
-├── middleware.ts                     Route protection + session refresh
-└── .env.local                        Your environment variables (never commit)
-```
+Before selling Skill Note to institutes or students:
 
-**Where backend logic lives:** any file named `actions.ts` with `"use server"` at the top. These run on the server and handle all database writes.
-
----
-
-## 8. Common problems
-
-**"Browse 0 subjects" on the landing page**
-Your database has no subjects yet. See section 5 on seeding.
-
-**`/admin` redirects me back to the dashboard**
-Your account still has the `student` role. Run the promotion SQL in section 5, then sign out and back in.
-
-**Changes don't appear after `git push`**
-Check the Vercel dashboard → Deployments to see if the build failed. Type errors will block deployment — always run `npm run build` locally first.
-
-**Build fails with a type error**
-Run `npm run build` locally to see the exact file and line. This catches problems that `npm run dev` does not.
-
-**Environment variables not working**
-They must start with `NEXT_PUBLIC_` to be readable in the browser. After changing `.env.local`, restart the dev server. On Vercel, changing env vars requires a redeploy.
-
-**File uploads failing on assignments**
-Confirm the `assignment-files` bucket exists, is set to private, and has its storage policies applied.
-
----
-
-## 9. Before you launch commercially
-
-These are genuinely outstanding and matter before taking payment or onboarding real students:
-
-- [ ] Enable leaked-password protection in Supabase Auth
-- [ ] Enable email confirmation for signups
-- [ ] Test tenant isolation with two real institutes (verify Institute A staff cannot see Institute B students)
-- [ ] Review copyright status of any past-paper content before distributing it
-- [ ] Have the privacy policy and terms reviewed by someone qualified — the included drafts are a starting point, not legal advice
-- [ ] Set up database backups (Supabase → Database → Backups)
-- [ ] Add error monitoring (e.g. Sentry)
-- [ ] Write automated tests — there are currently none
+- [ ] Enable leaked-password protection
+- [ ] Enable email confirmation
+- [ ] Test tenant isolation with two institutes
+- [ ] Verify all syllabus/question sources and licensing status
+- [ ] Add backups and recovery checks
+- [ ] Add Sentry or equivalent error monitoring
+- [ ] Add automated tests for critical flows
+- [ ] Review security advisors and RLS policies
+- [ ] Verify demo data is clearly marked as demo data
+- [ ] Review all public marketing claims before launch
