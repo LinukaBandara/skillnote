@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -13,15 +14,22 @@ async function getUser() {
 
 export async function addStudyItem(formData: FormData) {
   const { supabase, user } = await getUser();
+  await enforceRateLimit(supabase, user.id, "study_plan_add", 60, 3600);
 
-  const title = String(formData.get("title") ?? "").trim();
-  const subjectId = String(formData.get("subject_id") ?? "") || null;
-  const scheduledDate = String(formData.get("scheduled_date") ?? "");
-  const scheduledTime = String(formData.get("scheduled_time") ?? "") || null;
-  const durationMinutes = Number(formData.get("duration_minutes")) || 30;
+  const title = String(formData.get("title") ?? "").trim().slice(0, 200);
+  const subjectId = String(formData.get("subject_id") ?? "").trim() || null;
+  const scheduledDate = String(formData.get("scheduled_date") ?? "").trim();
+  const scheduledTime = String(formData.get("scheduled_time") ?? "").trim() || null;
+  const durationMinutes = Number(formData.get("duration_minutes"));
 
   if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) return;
   if (![15, 30, 45, 60].includes(durationMinutes)) return;
+  if (scheduledTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(scheduledTime)) return;
+
+  if (subjectId) {
+    const { data: subject } = await supabase.from("subjects").select("id").eq("id", subjectId).maybeSingle();
+    if (!subject) return;
+  }
 
   await supabase.from("study_plan_items").insert({
     student_id: user.id,
@@ -37,12 +45,18 @@ export async function addStudyItem(formData: FormData) {
 
 export async function toggleStudyItem(itemId: string, completed: boolean) {
   const { supabase, user } = await getUser();
-  await supabase.from("study_plan_items").update({ completed }).eq("id", itemId).eq("student_id", user.id);
+  await enforceRateLimit(supabase, user.id, "study_plan_toggle", 120, 3600);
+  if (!itemId || itemId.length > 100) return;
+
+  await supabase.from("study_plan_items").update({ completed: Boolean(completed) }).eq("id", itemId).eq("student_id", user.id);
   revalidatePath("/study-plan");
 }
 
 export async function deleteStudyItem(itemId: string) {
   const { supabase, user } = await getUser();
+  await enforceRateLimit(supabase, user.id, "study_plan_delete", 60, 3600);
+  if (!itemId || itemId.length > 100) return;
+
   await supabase.from("study_plan_items").delete().eq("id", itemId).eq("student_id", user.id);
   revalidatePath("/study-plan");
 }
@@ -53,6 +67,7 @@ export async function deleteStudyItem(itemId: string) {
  */
 export async function suggestFromWeakTopics() {
   const { supabase, user } = await getUser();
+  await enforceRateLimit(supabase, user.id, "study_plan_suggest", 20, 3600);
   const today = new Date().toISOString().slice(0, 10);
 
   const { data: existingToday } = await supabase
@@ -74,7 +89,7 @@ export async function suggestFromWeakTopics() {
     (item) => item.topic_id && !existingTopicIds.has(item.topic_id)
   );
 
-  const topicIds = recommendationTopics.map((item) => item.topic_id as string);
+  const topicIds = recommendationTopics.map((recommendation) => recommendation.topic_id as string);
   const { data: topicRows } = topicIds.length
     ? await supabase.from("syllabus_topics").select("id,title,unit_id").in("id", topicIds)
     : { data: [] };
@@ -93,7 +108,7 @@ export async function suggestFromWeakTopics() {
       student_id: user.id,
       subject_id: topic ? subjectByUnit.get(topic.unit_id) ?? null : null,
       topic_id: recommendation.topic_id,
-      title: `${type}: ${topic?.title ?? "Recommended topic"}`,
+      title: `${type}: ${topic?.title ?? "Recommended topic"}`.slice(0, 200),
       scheduled_date: today,
       duration_minutes: recommendation.recommendation_type === "mock" ? 60 : 30,
     };
@@ -128,7 +143,7 @@ export async function suggestFromWeakTopics() {
           student_id: user.id,
           subject_id: topic ? fallbackSubjects.get(topic.unit_id) ?? null : null,
           topic_id: item.topic_id,
-          title: `Revise: ${topic?.title ?? "Topic"}`,
+          title: `Revise: ${topic?.title ?? "Topic"}`.slice(0, 200),
           scheduled_date: today,
           duration_minutes: 30,
         };
