@@ -5,10 +5,12 @@ import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-async function requireStaff() {
+async function requireAdmin() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role === "student") redirect("/dashboard");
+  if (profile.role !== "platform_admin" && profile.role !== "institute_admin") {
+    redirect("/dashboard");
+  }
   return profile;
 }
 
@@ -20,9 +22,9 @@ const positiveInt = (formData: FormData, key: string) => {
 };
 
 export async function createExamSeries(formData: FormData) {
-  const profile = await requireStaff();
+  const profile = await requireAdmin();
   const supabase = await createClient();
-  const title = text(formData, "title");
+  const title = text(formData, "title").slice(0, 160);
   const subjectId = text(formData, "subject_id");
   if (!title || !subjectId) return;
 
@@ -44,7 +46,7 @@ export async function createExamSeries(formData: FormData) {
 }
 
 export async function createPaper(formData: FormData) {
-  const profile = await requireStaff();
+  const profile = await requireAdmin();
   const supabase = await createClient();
   const examSeriesId = text(formData, "exam_series_id");
   const subjectId = text(formData, "subject_id");
@@ -75,10 +77,10 @@ export async function createPaper(formData: FormData) {
 }
 
 export async function createPaperSection(formData: FormData) {
-  await requireStaff();
+  await requireAdmin();
   const supabase = await createClient();
   const paperId = text(formData, "paper_id");
-  const title = text(formData, "title");
+  const title = text(formData, "title").slice(0, 160);
   const position = positiveInt(formData, "position");
   if (!paperId || !title || !position) return;
 
@@ -95,7 +97,7 @@ export async function createPaperSection(formData: FormData) {
 }
 
 export async function addQuestionToPaper(formData: FormData) {
-  await requireStaff();
+  await requireAdmin();
   const supabase = await createClient();
   const sectionId = text(formData, "section_id");
   const questionId = text(formData, "question_id");
