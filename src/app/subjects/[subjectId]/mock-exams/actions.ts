@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 
 export async function startMockExam(examId: string) {
@@ -10,8 +11,17 @@ export async function startMockExam(examId: string) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Reuse an existing in-progress attempt if one exists, so a page refresh
-  // doesn't silently create duplicate attempts.
+  await enforceRateLimit(supabase, user.id, "mock_exam_start", 20, 3600);
+
+  const { data: exam, error: examError } = await supabase
+    .from("mock_exams")
+    .select("id, subject_id, duration_minutes")
+    .eq("id", examId)
+    .maybeSingle();
+
+  if (examError || !exam) throw new Error("Mock exam not found.");
+
+  // Reuse an existing in-progress attempt so refreshes do not create duplicates.
   const { data: existing } = await supabase
     .from("mock_exam_attempts")
     .select("id")
@@ -24,22 +34,25 @@ export async function startMockExam(examId: string) {
 
   if (existing) return existing.id as string;
 
-  const { count } = await supabase
+  const { count, error: questionCountError } = await supabase
     .from("mock_exam_questions")
-    .select("*", { count: "exact", head: true })
+    .select("question_id", { count: "exact", head: true })
     .eq("mock_exam_id", examId);
 
-  const { data: attempt } = await supabase
+  if (questionCountError || !count) throw new Error("This mock exam has no questions yet.");
+
+  const { data: attempt, error: attemptError } = await supabase
     .from("mock_exam_attempts")
     .insert({
       mock_exam_id: examId,
       student_id: user.id,
-      total_questions: count ?? 0,
+      total_questions: count,
     })
-    .select()
+    .select("id")
     .single();
 
-  return attempt?.id as string | undefined;
+  if (attemptError || !attempt) throw new Error("Unable to start the mock exam.");
+  return attempt.id as string;
 }
 
 export async function submitMockExam(
@@ -53,21 +66,94 @@ export async function submitMockExam(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const answerRows = answers.map((a) => ({
-    attempt_id: attemptId,
-    question_id: a.questionId,
-    selected_index: a.selectedIndex ?? null,
-    is_correct: a.selectedIndex !== undefined && a.selectedIndex === a.correctIndex,
-  }));
+  await enforceRateLimit(supabase, user.id, "mock_exam_submit", 10, 3600);
 
-  if (answerRows.length > 0) {
-    await supabase.from("mock_exam_answers").insert(answerRows);
+  if (!Array.isArray(answers) || answers.length > 500) {
+    throw new Error("Invalid answer payload.");
+  }
+  if (!Number.isInteger(timeTakenSeconds) || timeTakenSeconds < 0 || timeTakenSeconds > 86400) {
+    throw new Error("Invalid exam duration.");
   }
 
-  const correctCount = answerRows.filter((a) => a.is_correct).length;
-  const score = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
+  const { data: attempt, error: attemptError } = await supabase
+    .from("mock_exam_attempts")
+    .select("id, mock_exam_id, student_id, submitted_at, started_at, total_questions, mock_exams(duration_minutes)")
+    .eq("id", attemptId)
+    .eq("student_id", user.id)
+    .maybeSingle();
 
-  await supabase
+  if (attemptError || !attempt) throw new Error("Mock exam attempt not found.");
+  if (attempt.submitted_at) throw new Error("This mock exam has already been submitted.");
+
+  const durationMinutes = Number(attempt.mock_exams?.duration_minutes ?? 0);
+  if (durationMinutes > 0 && timeTakenSeconds > durationMinutes * 60 + 30) {
+    throw new Error("The mock exam time limit has been exceeded.");
+  }
+
+  const { data: examQuestions, error: questionError } = await supabase
+    .from("mock_exam_questions")
+    .select("question_id, questions(correct_index, options, question_type)")
+    .eq("mock_exam_id", attempt.mock_exam_id)
+    .order("position");
+
+  if (questionError || !examQuestions) throw new Error("Unable to validate mock exam questions.");
+
+  const allowedQuestions = new Map(
+    examQuestions.map((row) => [
+      row.question_id,
+      row.questions,
+    ])
+  );
+
+  const seen = new Set<string>();
+  const validatedAnswers: { questionId: string; selectedIndex: number | null; isCorrect: boolean }[] = [];
+
+  for (const answer of answers) {
+    if (seen.has(answer.questionId)) continue;
+    const question = allowedQuestions.get(answer.questionId);
+    if (!question) continue;
+
+    seen.add(answer.questionId);
+    const selectedIndex = answer.selectedIndex === undefined ? null : answer.selectedIndex;
+    if (selectedIndex !== null && (!Number.isInteger(selectedIndex) || selectedIndex < 0)) {
+      throw new Error("Invalid answer selection.");
+    }
+
+    const options = Array.isArray(question?.options) ? question.options : [];
+    if (selectedIndex !== null && options.length > 0 && selectedIndex >= options.length) {
+      throw new Error("Invalid answer selection.");
+    }
+
+    const correctIndex = Number(question?.correct_index);
+    const isCorrect = selectedIndex !== null && Number.isInteger(correctIndex) && selectedIndex === correctIndex;
+
+    validatedAnswers.push({ questionId: answer.questionId, selectedIndex, isCorrect });
+  }
+
+  if (validatedAnswers.length !== examQuestions.length) {
+    // Missing answers are allowed, but never count as correct.
+    for (const row of examQuestions) {
+      if (!seen.has(row.question_id)) {
+        validatedAnswers.push({ questionId: row.question_id, selectedIndex: null, isCorrect: false });
+      }
+    }
+  }
+
+  const answerRows = validatedAnswers.map((answer) => ({
+    attempt_id: attemptId,
+    question_id: answer.questionId,
+    selected_index: answer.selectedIndex,
+    is_correct: answer.isCorrect,
+  }));
+
+  const { error: answersError } = await supabase.from("mock_exam_answers").insert(answerRows);
+  if (answersError) throw new Error("Unable to save mock exam answers.");
+
+  const correctCount = answerRows.filter((answer) => answer.is_correct).length;
+  const totalQuestions = examQuestions.length;
+  const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+
+  const { error: updateError } = await supabase
     .from("mock_exam_attempts")
     .update({
       submitted_at: new Date().toISOString(),
@@ -75,7 +161,11 @@ export async function submitMockExam(
       correct_count: correctCount,
       time_taken_seconds: timeTakenSeconds,
     })
-    .eq("id", attemptId);
+    .eq("id", attemptId)
+    .eq("student_id", user.id)
+    .is("submitted_at", null);
+
+  if (updateError) throw new Error("Unable to finalize the mock exam.");
 
   return { score, correctCount };
 }
