@@ -1,5 +1,6 @@
 export type Role = "student" | "teacher" | "institute_admin" | "platform_admin";
 export type Medium = "english" | "sinhala" | "tamil";
+export type PreferredLanguage = "en" | "si" | "ta";
 
 export interface Profile {
   id: string;
@@ -10,6 +11,7 @@ export interface Profile {
   institute_id: string | null;
   al_year: number | null;
   medium: Medium | null;
+  preferred_language: PreferredLanguage | null;
   created_at: string;
 }
 
