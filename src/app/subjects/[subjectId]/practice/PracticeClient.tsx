@@ -41,7 +41,7 @@ export function PracticeClient({
   if (isDone) {
     return (
       <div className="clay p-8 text-center">
-        <p className="stat-serif text-4xl mb-2">
+        <p className="text-[38px] font-bold tracking-[-0.035em] mb-2">
           {score.correct}/{score.total}
         </p>
         <p className="text-ink-soft text-sm mb-6">questions answered correctly</p>

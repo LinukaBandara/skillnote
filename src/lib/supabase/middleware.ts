@@ -34,13 +34,20 @@ export async function updateSession(request: NextRequest) {
   const isProtected =
     path.startsWith("/dashboard") ||
     path.startsWith("/admin") ||
-    path.startsWith("/onboarding");
+    path.startsWith("/onboarding") ||
+    path.startsWith("/practice") ||
+    path.startsWith("/certificates") ||
+    path.startsWith("/study-plan") ||
+    path.startsWith("/notifications");
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
+
+  // Expose the current pathname to server components (e.g. to decide layout chrome).
+  supabaseResponse.headers.set("x-pathname", path);
 
   return supabaseResponse;
 }

@@ -4,6 +4,7 @@ import { updateTopicStatus } from "../actions";
 import type { TopicStatus } from "@/types/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { MaybeShell } from "@/components/dashboard/MaybeShell";
 
 const STATUS_LABELS: Record<TopicStatus, string> = {
   not_started: "Not started",
@@ -69,18 +70,26 @@ export default async function SubjectDetailPage({
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16">
-      <h1 className="stat-serif text-4xl mb-1">{subject.name}</h1>
+    <MaybeShell isLoggedIn={!!profile} isStaff={profile ? profile.role !== "student" : false} activeHref="/subjects">
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">{subject.name}</h1>
       <div className="flex items-center justify-between mb-10">
         <p className="text-ink-soft text-sm">
           Track your progress through each topic.
         </p>
-        <Link
-          href={`/subjects/${subjectId}/practice`}
-          className="text-sm text-cobalt border-b border-cobalt/30 hover:border-cobalt pb-0.5"
-        >
-          Practice questions →
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/subjects/${subjectId}/mock-exams`}
+            className="text-sm text-ink-soft border-b border-rule hover:border-ink pb-0.5"
+          >
+            Mock exams
+          </Link>
+          <Link
+            href={`/subjects/${subjectId}/practice`}
+            className="text-sm text-cobalt border-b border-cobalt/30 hover:border-cobalt pb-0.5"
+          >
+            Practice questions →
+          </Link>
+        </div>
       </div>
 
       {(units ?? []).length === 0 ? (
@@ -91,7 +100,7 @@ export default async function SubjectDetailPage({
         <div className="space-y-10">
           {(units ?? []).map((unit) => (
             <div key={unit.id}>
-              <h2 className="text-sm font-medium text-ink-soft mb-3">{unit.title}</h2>
+              <h2 className="section-label mb-3">{unit.title}</h2>
               <ul className="border-t border-rule">
                 {(unit.syllabus_topics ?? [])
                   .sort((a: { position: number }, b: { position: number }) => a.position - b.position)
@@ -136,6 +145,6 @@ export default async function SubjectDetailPage({
           ))}
         </div>
       )}
-    </div>
+    </MaybeShell>
   );
 }

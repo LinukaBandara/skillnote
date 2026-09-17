@@ -41,7 +41,7 @@ export default async function Home() {
           <div className="clay p-8">
             <div className="flex items-baseline justify-between mb-8 pb-6 border-b border-rule">
               <span className="text-sm text-ink-soft">G.C.E. A/L 2027</span>
-              <span className="stat-serif text-4xl text-ink">326<span className="text-base font-sans not-italic text-ink-soft ml-1">days</span></span>
+              <span className="text-[32px] font-bold tracking-[-0.03em] text-ink">326<span className="text-sm font-medium text-ink-faint ml-1.5">days</span></span>
             </div>
             <div className="space-y-5">
               <div>
@@ -73,21 +73,21 @@ export default async function Home() {
       <section className="border-t border-rule">
         <div className="max-w-6xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-12">
           <div>
-            <h3 className="stat-serif text-3xl text-ink mb-3">Syllabus tracker</h3>
+            <h3 className="text-lg font-semibold tracking-[-0.02em] text-ink mb-2.5">Syllabus tracker</h3>
             <p className="text-ink-soft text-sm leading-relaxed max-w-[26ch]">
               Every unit and topic in your stream, with a clear status: not
               started, in progress, completed, or needs revision.
             </p>
           </div>
           <div>
-            <h3 className="stat-serif text-3xl text-ink mb-3">Past papers</h3>
+            <h3 className="text-lg font-semibold tracking-[-0.02em] text-ink mb-2.5">Past papers</h3>
             <p className="text-ink-soft text-sm leading-relaxed max-w-[26ch]">
               Filter by subject, year, and topic. Every attempt is recorded so
               you can see where marks are actually being lost.
             </p>
           </div>
           <div>
-            <h3 className="stat-serif text-3xl text-ink mb-3">Skill insight</h3>
+            <h3 className="text-lg font-semibold tracking-[-0.02em] text-ink mb-2.5">Skill insight</h3>
             <p className="text-ink-soft text-sm leading-relaxed max-w-[26ch]">
               A short, honest note on what&rsquo;s slipping and what to revise
               next, based on your actual quiz and practice history.

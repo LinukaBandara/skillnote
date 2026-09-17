@@ -1,6 +1,7 @@
 import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { AppShell } from "@/components/dashboard/AppShell";
 
 const INACTIVITY_THRESHOLD_DAYS = 14;
 const LOW_SCORE_THRESHOLD = 50;
@@ -53,7 +54,7 @@ export default async function AdminStudentsPage() {
     const lastActivity = allDates.length > 0 ? new Date(Math.max(...allDates.map((d) => new Date(d).getTime()))) : null;
 
     const daysSinceActivity = lastActivity
-      ? Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.floor((new Date().getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
     const hasActivity = allDates.length > 0;
@@ -77,8 +78,9 @@ export default async function AdminStudentsPage() {
   const atRiskCount = rows.filter((r) => r.atRisk).length;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
-      <h1 className="stat-serif text-4xl mb-1">Students</h1>
+    <AppShell activeHref="/admin/students" isStaff showInstitutes={profile.role !== "teacher"}>
+    <div className="max-w-3xl px-6 md:px-8 py-10">
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">Students</h1>
       <p className="text-ink-soft mb-8 text-sm">
         {rows.length} student{rows.length === 1 ? "" : "s"}
         {atRiskCount > 0 && (
@@ -131,5 +133,6 @@ export default async function AdminStudentsPage() {
         platform activity only, not a judgement of the student.
       </p>
     </div>
+    </AppShell>
   );
 }

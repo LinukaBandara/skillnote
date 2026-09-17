@@ -68,6 +68,15 @@ export async function markLessonComplete(lessonId: string, courseId: string) {
         .update({ completed_at: new Date().toISOString() })
         .eq("student_id", user.id)
         .eq("course_id", courseId);
+
+      const { data: course } = await supabase.from("courses").select("title").eq("id", courseId).single();
+      await supabase.rpc("create_notification", {
+        target_user: user.id,
+        n_type: "certificate_issued",
+        n_title: "Certificate earned",
+        n_body: course ? `You completed ${course.title}` : "You completed a course",
+        n_link: `/courses/${courseId}/certificate`,
+      });
     }
   }
 
@@ -164,6 +173,22 @@ export async function addComment(
     author_id: user.id,
     content,
   });
+
+  const { data: thread } = await supabase
+    .from("discussion_threads")
+    .select("student_id, title")
+    .eq("id", threadId)
+    .single();
+
+  if (thread && thread.student_id !== user.id) {
+    await supabase.rpc("create_notification", {
+      target_user: thread.student_id,
+      n_type: "discussion_reply",
+      n_title: "New reply",
+      n_body: `Someone replied to "${thread.title}"`,
+      n_link: `/courses/${courseId}/discussions/${threadId}`,
+    });
+  }
 
   revalidatePath(`/courses/${courseId}/discussions/${threadId}`);
 }

@@ -31,7 +31,7 @@ export default async function CertificatePage({
 
       <div className="clay p-10 mt-8 text-center">
         <p className="text-xs text-ink-faint uppercase tracking-wide mb-6">Certificate of completion</p>
-        <p className="stat-serif text-3xl mb-2">{profile.full_name}</p>
+        <p className="text-[26px] font-semibold tracking-[-0.03em] mb-2">{profile.full_name}</p>
         <p className="text-ink-soft text-sm mb-8">has completed</p>
         <p className="text-xl font-semibold mb-10">{cert.courses?.title}</p>
         <div className="flex items-center justify-between text-xs text-ink-faint border-t border-rule pt-6">

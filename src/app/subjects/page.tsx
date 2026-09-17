@@ -1,29 +1,46 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/supabase/get-profile";
+import { MaybeShell } from "@/components/dashboard/MaybeShell";
 import type { Stream, Subject } from "@/types/db";
 
-export default async function SubjectsPage() {
+export default async function SubjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const supabase = await createClient();
+  const profile = await getCurrentProfile();
   const { data: streams } = await supabase.from("streams").select("*").order("name");
   const { data: subjects } = await supabase.from("subjects").select("*").order("name");
 
   const streamList = (streams ?? []) as Stream[];
-  const subjectList = (subjects ?? []) as Subject[];
+  let subjectList = (subjects ?? []) as Subject[];
+
+  if (q) {
+    subjectList = subjectList.filter((s) => s.name.toLowerCase().includes(q.toLowerCase()));
+  }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-20">
-      <h1 className="stat-serif text-4xl mb-1">Subjects</h1>
+    <MaybeShell isLoggedIn={!!profile} isStaff={profile ? profile.role !== "student" : false} activeHref="/subjects">
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">Subjects</h1>
       <p className="text-ink-soft mb-12 text-sm">
-        Browse the A/L syllabus by stream.
+        {q ? `Results for "${q}"` : "Browse the A/L syllabus by stream."}
       </p>
 
       <div className="space-y-10">
-        {streamList.map((stream) => {
+        {subjectList.length === 0 ? (
+          <p className="text-ink-soft text-sm border-l-2 border-rule pl-4 py-1">
+            No subjects match &ldquo;{q}&rdquo;.
+          </p>
+        ) : (
+          streamList.map((stream) => {
           const streamSubjects = subjectList.filter((s) => s.stream_id === stream.id);
           if (streamSubjects.length === 0) return null;
           return (
             <div key={stream.id}>
-              <h2 className="text-xs text-ink-faint mb-3">{stream.name}</h2>
+              <h2 className="section-label mb-3">{stream.name}</h2>
               <ul className="border-t border-rule">
                 {streamSubjects.map((subject) => (
                   <li key={subject.id} className="border-b border-rule">
@@ -43,8 +60,9 @@ export default async function SubjectsPage() {
               </ul>
             </div>
           );
-        })}
+          })
+        )}
       </div>
-    </div>
+    </MaybeShell>
   );
 }

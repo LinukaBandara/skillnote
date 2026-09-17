@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { completeOnboarding } from "./actions";
 import type { Subject, Stream } from "@/types/db";
+import { AppShell } from "@/components/dashboard/AppShell";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -27,8 +28,9 @@ export default async function OnboardingPage() {
   const yearOptions = [currentYear, currentYear + 1, currentYear + 2];
 
   return (
-    <div className="max-w-lg mx-auto px-6 py-16">
-      <h1 className="stat-serif text-4xl mb-1">Set up your studies</h1>
+    <AppShell activeHref="/onboarding">
+    <div className="max-w-lg px-6 md:px-8 py-10">
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">Set up your studies</h1>
       <p className="text-ink-soft mb-10 text-sm">
         This helps Skill Note show the right syllabus and exam countdown.
       </p>
@@ -103,5 +105,6 @@ export default async function OnboardingPage() {
         </button>
       </form>
     </div>
+    </AppShell>
   );
 }

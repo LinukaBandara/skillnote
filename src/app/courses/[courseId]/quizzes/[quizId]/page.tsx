@@ -29,7 +29,7 @@ export default async function QuizPage({
       <Link href={`/courses/${courseId}`} className="text-sm text-ink-soft hover:text-ink">
         ← Back to course
       </Link>
-      <h1 className="stat-serif text-4xl mt-6 mb-8">{quiz.title}</h1>
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mt-6 mb-8">{quiz.title}</h1>
 
       {(questions ?? []).length === 0 ? (
         <p className="text-ink-soft text-sm border-l-2 border-rule pl-4 py-1">

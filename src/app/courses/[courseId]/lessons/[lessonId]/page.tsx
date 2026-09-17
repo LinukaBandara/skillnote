@@ -48,7 +48,7 @@ export default async function LessonPage({
         ← Back to course
       </Link>
 
-      <h1 className="stat-serif text-4xl mt-6 mb-6">{lesson.title}</h1>
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mt-6 mb-6">{lesson.title}</h1>
 
       {lesson.video_url && (
         <div className="mb-6 aspect-video bg-ink/5 rounded-2xl flex items-center justify-center text-sm text-ink-soft">

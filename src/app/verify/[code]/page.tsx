@@ -17,7 +17,7 @@ export default async function VerifyPage({
 
   return (
     <div className="max-w-xl mx-auto px-6 py-20">
-      <h1 className="stat-serif text-4xl mb-8">Certificate verification</h1>
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-8">Certificate verification</h1>
 
       {cert ? (
         <div className="clay p-8">

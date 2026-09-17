@@ -26,6 +26,17 @@ export async function submitQuestionAttempt(
     is_correct: isCorrect,
   });
 
+  // Recalculate mastery + next review date for this question's topic.
+  const { data: question } = await supabase
+    .from("questions")
+    .select("topic_id")
+    .eq("id", questionId)
+    .single();
+
+  if (question?.topic_id) {
+    await supabase.rpc("update_topic_mastery", { p_topic_id: question.topic_id });
+  }
+
   revalidatePath(`/subjects/${subjectId}/practice`);
   return { isCorrect };
 }

@@ -57,7 +57,7 @@ export default async function CourseDetailPage({
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-16">
-      <h1 className="stat-serif text-4xl mb-1">{course.title}</h1>
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">{course.title}</h1>
       {course.description && <p className="text-ink-soft mb-6 text-sm">{course.description}</p>}
 
       <div className="flex items-center gap-4 mb-10 text-sm">
@@ -76,6 +76,11 @@ export default async function CourseDetailPage({
         <Link href={`/courses/${courseId}/discussions`} className="text-ink-soft hover:text-ink border-b border-rule hover:border-ink pb-0.5">
           Discussions
         </Link>
+        {profile && (
+          <Link href={`/courses/${courseId}/assignments`} className="text-ink-soft hover:text-ink border-b border-rule hover:border-ink pb-0.5">
+            Assignments
+          </Link>
+        )}
         {hasCertificate && (
           <Link href={`/courses/${courseId}/certificate`} className="text-sage border-b border-sage/30 hover:border-sage pb-0.5">
             View certificate
@@ -86,7 +91,7 @@ export default async function CourseDetailPage({
       <div className="space-y-10">
         {(modules ?? []).map((mod) => (
           <div key={mod.id}>
-            <h2 className="text-sm font-medium text-ink-soft mb-3">{mod.title}</h2>
+            <h2 className="section-label mb-3">{mod.title}</h2>
             <ul className="border-t border-rule">
               {(mod.lessons ?? [])
                 .sort((a: { position: number }, b: { position: number }) => a.position - b.position)

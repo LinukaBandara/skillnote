@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createCourse } from "../actions";
 import type { Course, Subject } from "@/types/db";
+import { AppShell } from "@/components/dashboard/AppShell";
 
 export default async function AdminCoursesPage() {
   const profile = await getCurrentProfile();
@@ -24,8 +25,9 @@ export default async function AdminCoursesPage() {
   const subjectList = (subjects ?? []) as Subject[];
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16">
-      <h1 className="stat-serif text-4xl mb-1">Courses</h1>
+    <AppShell activeHref="/admin/courses" isStaff showInstitutes={profile.role !== "teacher"}>
+    <div className="max-w-xl px-6 md:px-8 py-10">
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">Courses</h1>
       <p className="text-ink-soft mb-10 text-sm">Create and manage course content.</p>
 
       <details className="clay p-6 mb-10">
@@ -36,7 +38,7 @@ export default async function AdminCoursesPage() {
             <input
               name="title"
               required
-              className="w-full border-b border-rule bg-transparent py-2 focus:outline-none focus:border-cobalt"
+              className="field"
             />
           </div>
           <div>
@@ -44,12 +46,12 @@ export default async function AdminCoursesPage() {
             <textarea
               name="description"
               rows={2}
-              className="w-full border-b border-rule bg-transparent py-2 focus:outline-none focus:border-cobalt resize-none"
+              className="field resize-none"
             />
           </div>
           <div>
             <label className="block text-sm mb-1.5">Subject (optional)</label>
-            <select name="subject_id" className="w-full border-b border-rule bg-transparent py-2 focus:outline-none focus:border-cobalt">
+            <select name="subject_id" className="field">
               <option value="">No subject</option>
               {subjectList.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -82,5 +84,6 @@ export default async function AdminCoursesPage() {
         </ul>
       )}
     </div>
+    </AppShell>
   );
 }

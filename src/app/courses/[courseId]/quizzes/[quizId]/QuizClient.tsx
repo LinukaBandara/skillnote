@@ -36,7 +36,7 @@ export function QuizClient({
   if (result) {
     return (
       <div className="clay p-8 text-center">
-        <p className="stat-serif text-4xl mb-2">{result.score}%</p>
+        <p className="text-[38px] font-bold tracking-[-0.035em] mb-2">{result.score}%</p>
         <p className={`text-sm mb-6 ${result.passed ? "text-sage" : "text-ink-soft"}`}>
           {result.passed ? `Passed (need ${passingScore}%)` : `Not yet — need ${passingScore}% to pass`}
         </p>

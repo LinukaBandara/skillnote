@@ -1,7 +1,9 @@
 import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
 import { addModule, addLesson, togglePublish } from "../../actions";
+import { AppShell } from "@/components/dashboard/AppShell";
 
 export default async function AdminCourseDetailPage({
   params,
@@ -25,9 +27,10 @@ export default async function AdminCourseDetailPage({
     .order("position");
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16">
+    <AppShell activeHref="/admin/courses" isStaff showInstitutes={profile.role !== "teacher"}>
+    <div className="max-w-xl px-6 md:px-8 py-10">
       <div className="flex items-start justify-between mb-1">
-        <h1 className="stat-serif text-4xl">{course.title}</h1>
+        <h1 className="text-2xl font-semibold">{course.title}</h1>
         <form action={async () => { "use server"; await togglePublish(courseId, !course.published); }}>
           <button
             type="submit"
@@ -37,12 +40,18 @@ export default async function AdminCourseDetailPage({
           </button>
         </form>
       </div>
-      {course.description && <p className="text-ink-soft text-sm mb-10">{course.description}</p>}
+      {course.description && <p className="text-ink-soft text-sm mb-6">{course.description}</p>}
+      <Link
+        href={`/admin/courses/${courseId}/assignments`}
+        className="text-sm text-cobalt border-b border-cobalt/30 hover:border-cobalt pb-0.5 inline-block mb-10"
+      >
+        Manage assignments →
+      </Link>
 
       <div className="space-y-10">
         {(modules ?? []).map((mod) => (
           <div key={mod.id}>
-            <h2 className="text-sm font-medium text-ink-soft mb-3">{mod.title}</h2>
+            <h2 className="section-label mb-3">{mod.title}</h2>
             <ul className="border-t border-rule mb-4">
               {(mod.lessons ?? [])
                 .sort((a: { position: number }, b: { position: number }) => a.position - b.position)
@@ -65,18 +74,18 @@ export default async function AdminCourseDetailPage({
                   name="title"
                   placeholder="Lesson title"
                   required
-                  className="w-full border-b border-rule bg-transparent py-2 text-sm focus:outline-none focus:border-cobalt"
+                  className="field"
                 />
                 <textarea
                   name="content"
                   placeholder="Lesson content"
                   rows={3}
-                  className="w-full border-b border-rule bg-transparent py-2 text-sm focus:outline-none focus:border-cobalt resize-none"
+                  className="field resize-none"
                 />
                 <input
                   name="video_url"
                   placeholder="Video URL (optional)"
-                  className="w-full border-b border-rule bg-transparent py-2 text-sm focus:outline-none focus:border-cobalt"
+                  className="field"
                 />
                 <button type="submit" className="text-xs btn-primary px-4 py-2 rounded-full">
                   Add lesson
@@ -100,7 +109,7 @@ export default async function AdminCourseDetailPage({
             name="title"
             placeholder="Module title"
             required
-            className="flex-1 border-b border-rule bg-transparent py-2 text-sm focus:outline-none focus:border-cobalt"
+            className="field flex-1"
           />
           <button type="submit" className="btn-primary px-4 py-2 rounded-full text-sm">
             Add
@@ -108,5 +117,6 @@ export default async function AdminCourseDetailPage({
         </form>
       </details>
     </div>
+    </AppShell>
   );
 }

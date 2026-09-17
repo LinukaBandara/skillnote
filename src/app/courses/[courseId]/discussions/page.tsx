@@ -27,7 +27,7 @@ export default async function DiscussionsPage({
       <Link href={`/courses/${courseId}`} className="text-sm text-ink-soft hover:text-ink">
         ← {course.title}
       </Link>
-      <h1 className="stat-serif text-4xl mt-6 mb-8">Discussions</h1>
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mt-6 mb-8">Discussions</h1>
 
       {profile && (
         <details className="clay p-6 mb-10">
@@ -45,14 +45,14 @@ export default async function DiscussionsPage({
               name="title"
               placeholder="Question or topic"
               required
-              className="w-full border-b border-rule bg-transparent py-2 text-sm focus:outline-none focus:border-cobalt"
+              className="field"
             />
             <textarea
               name="content"
               placeholder="Details"
               rows={3}
               required
-              className="w-full border-b border-rule bg-transparent py-2 text-sm focus:outline-none focus:border-cobalt resize-none"
+              className="field resize-none"
             />
             <button type="submit" className="btn-primary px-5 py-2.5 rounded-full text-sm font-medium">
               Post

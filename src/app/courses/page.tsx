@@ -14,7 +14,7 @@ export default async function CoursesPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-20">
-      <h1 className="stat-serif text-4xl mb-1">Subjects</h1>
+      <h1 className="text-[25px] font-semibold tracking-[-0.025em] mb-1">Subjects</h1>
       <p className="text-ink-soft mb-12 text-sm">{list.length} available right now.</p>
 
       {list.length === 0 ? (
