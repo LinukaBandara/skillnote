@@ -19,17 +19,18 @@ export async function submitQuestionAttempt(
 
   const isCorrect = selectedIndex === correctIndex;
 
-  await supabase.from("question_attempts").insert({
+  const { error: attemptError } = await supabase.from("question_attempts").insert({
     student_id: user.id,
     question_id: questionId,
     selected_index: selectedIndex,
     is_correct: isCorrect,
   });
 
-  // Recalculate mastery + next review date for this question's topic.
+  if (attemptError) throw new Error("Unable to save question attempt.");
+
   const { data: question } = await supabase
     .from("questions")
-    .select("topic_id")
+    .select("topic_id, learning_outcome_id")
     .eq("id", questionId)
     .single();
 
@@ -37,6 +38,16 @@ export async function submitQuestionAttempt(
     await supabase.rpc("update_topic_mastery", { p_topic_id: question.topic_id });
   }
 
+  if (question?.learning_outcome_id) {
+    await supabase.rpc("refresh_learning_outcome_mastery", {
+      p_student_id: user.id,
+      p_learning_outcome_id: question.learning_outcome_id,
+    });
+    await supabase.rpc("refresh_practice_recommendations", { p_student_id: user.id });
+  }
+
   revalidatePath(`/subjects/${subjectId}/practice`);
+  revalidatePath("/dashboard");
+  revalidatePath("/study-plan");
   return { isCorrect };
 }
