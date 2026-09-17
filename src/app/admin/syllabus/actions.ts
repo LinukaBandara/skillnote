@@ -23,7 +23,12 @@ function optionalText(formData: FormData, key: string) {
 
 function position(formData: FormData) {
   const value = Number(formData.get("position"));
-  return Number.isFinite(value) && value > 0 ? value : 1;
+  return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+function year(formData: FormData, key: string) {
+  const value = Number(formData.get(key));
+  return Number.isInteger(value) && value > 0 ? value : null;
 }
 
 export async function createSyllabusVersion(formData: FormData) {
@@ -31,16 +36,22 @@ export async function createSyllabusVersion(formData: FormData) {
   const supabase = await createClient();
   const code = text(formData, "code");
   const name = text(formData, "name");
-  if (!code || !name) return;
+  const academicYearFrom = year(formData, "academic_year_from");
+  const academicYearTo = year(formData, "academic_year_to");
 
-  await supabase.from("syllabus_versions").insert({
+  if (!code || !name) return;
+  if (academicYearFrom && academicYearTo && academicYearTo < academicYearFrom) return;
+
+  const { error } = await supabase.from("syllabus_versions").insert({
     code,
     name,
-    academic_year_from: Number(formData.get("academic_year_from")) || null,
-    academic_year_to: Number(formData.get("academic_year_to")) || null,
+    academic_year_from: academicYearFrom,
+    academic_year_to: academicYearTo,
     notes: optionalText(formData, "notes"),
     created_by: profile.id,
   });
+
+  if (error) throw new Error(`Unable to create syllabus version: ${error.message}`);
   revalidatePath("/admin/syllabus");
 }
 
@@ -51,9 +62,26 @@ export async function createCompetency(formData: FormData) {
   const subjectId = text(formData, "subject_id");
   const code = text(formData, "code");
   const title = text(formData, "title");
+
   if (!syllabusVersionId || !subjectId || !code || !title) return;
 
-  await supabase.from("syllabus_competencies").insert({ syllabus_version_id: syllabusVersionId, subject_id: subjectId, code, title, description: optionalText(formData, "description"), position: position(formData) });
+  const { error: competencyError } = await supabase.from("syllabus_competencies").insert({
+    syllabus_version_id: syllabusVersionId,
+    subject_id: subjectId,
+    code,
+    title,
+    description: optionalText(formData, "description"),
+    position: position(formData),
+  });
+
+  if (competencyError) throw new Error(`Unable to create competency: ${competencyError.message}`);
+
+  const { error: linkError } = await supabase.from("syllabus_version_subjects").upsert(
+    { syllabus_version_id: syllabusVersionId, subject_id: subjectId },
+    { onConflict: "syllabus_version_id,subject_id", ignoreDuplicates: true },
+  );
+
+  if (linkError) throw new Error(`Competency created, but subject-version link failed: ${linkError.message}`);
   revalidatePath("/admin/syllabus");
 }
 
@@ -65,10 +93,15 @@ export async function createCompetencyLevel(formData: FormData) {
   const title = text(formData, "title");
   if (!competencyId || !code || !title) return;
 
-  const { data: competency } = await supabase.from("syllabus_competencies").select("syllabus_version_id, subject_id").eq("id", competencyId).single();
-  if (!competency) return;
+  const { data: competency, error: competencyError } = await supabase
+    .from("syllabus_competencies")
+    .select("syllabus_version_id, subject_id")
+    .eq("id", competencyId)
+    .single();
 
-  await supabase.from("syllabus_competency_levels").insert({
+  if (competencyError || !competency) throw new Error("The selected competency could not be found.");
+
+  const { error } = await supabase.from("syllabus_competency_levels").insert({
     competency_id: competencyId,
     syllabus_version_id: competency.syllabus_version_id,
     subject_id: competency.subject_id,
@@ -77,6 +110,8 @@ export async function createCompetencyLevel(formData: FormData) {
     description: optionalText(formData, "description"),
     position: position(formData),
   });
+
+  if (error) throw new Error(`Unable to create competency level: ${error.message}`);
   revalidatePath("/admin/syllabus");
 }
 
@@ -87,7 +122,14 @@ export async function createSubtopic(formData: FormData) {
   const title = text(formData, "title");
   if (!topicId || !title) return;
 
-  await supabase.from("syllabus_subtopics").insert({ topic_id: topicId, title, description: optionalText(formData, "description"), position: position(formData) });
+  const { error } = await supabase.from("syllabus_subtopics").insert({
+    topic_id: topicId,
+    title,
+    description: optionalText(formData, "description"),
+    position: position(formData),
+  });
+
+  if (error) throw new Error(`Unable to create subtopic: ${error.message}`);
   revalidatePath("/admin/syllabus");
 }
 
@@ -98,6 +140,13 @@ export async function createLearningOutcome(formData: FormData) {
   const statement = text(formData, "statement");
   if (!subtopicId || !statement) return;
 
-  await supabase.from("syllabus_learning_outcomes").insert({ subtopic_id: subtopicId, code: optionalText(formData, "code"), statement, position: position(formData) });
+  const { error } = await supabase.from("syllabus_learning_outcomes").insert({
+    subtopic_id: subtopicId,
+    code: optionalText(formData, "code"),
+    statement,
+    position: position(formData),
+  });
+
+  if (error) throw new Error(`Unable to create learning outcome: ${error.message}`);
   revalidatePath("/admin/syllabus");
 }
