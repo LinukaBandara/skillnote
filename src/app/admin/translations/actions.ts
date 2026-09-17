@@ -4,10 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/get-profile";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import type { PreferredLanguage } from "@/types/db";
 
 const LANGUAGES = new Set<PreferredLanguage>(["si", "ta"]);
 const STATUSES = new Set(["draft", "review", "published", "archived"]);
+const MAX_ID_LENGTH = 100;
+const MAX_TITLE_LENGTH = 240;
+const MAX_TEXT_LENGTH = 20000;
 
 const TABLE_CONFIG = {
   syllabus_unit_translations: { idColumn: "unit_id", required: "title", fields: ["title"] },
@@ -22,13 +26,24 @@ const TABLE_CONFIG = {
 
 type TranslationTable = keyof typeof TABLE_CONFIG;
 
+type StaffProfile = NonNullable<Awaited<ReturnType<typeof getCurrentProfile>>>;
+
+async function requireTranslationManager() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (profile.role !== "platform_admin" && profile.role !== "institute_admin") {
+    redirect("/dashboard");
+  }
+  return profile as StaffProfile;
+}
+
 function parseRequest(formData: FormData) {
   const table = formData.get("table");
   const id = formData.get("id");
   const language = formData.get("language");
   if (
     typeof table !== "string" || !(table in TABLE_CONFIG) ||
-    typeof id !== "string" || !id ||
+    typeof id !== "string" || !id || id.length > MAX_ID_LENGTH ||
     typeof language !== "string" || !LANGUAGES.has(language as PreferredLanguage)
   ) return null;
 
@@ -36,15 +51,19 @@ function parseRequest(formData: FormData) {
   return { table: table as TranslationTable, id, language: language as PreferredLanguage, config };
 }
 
-export async function saveTranslation(formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
-  if (profile.role === "student") redirect("/dashboard");
+function readText(formData: FormData, field: string, maxLength: number) {
+  const value = String(formData.get(field) ?? "").trim();
+  return value.length > maxLength ? value.slice(0, maxLength) : value;
+}
 
+export async function saveTranslation(formData: FormData) {
+  const profile = await requireTranslationManager();
   const request = parseRequest(formData);
   if (!request) return;
 
   const supabase = await createClient();
+  await enforceRateLimit(supabase, profile.id, "admin_translation_save", 120, 3600);
+
   const payload: Record<string, unknown> = {
     [request.config.idColumn]: request.id,
     language_code: request.language,
@@ -53,30 +72,30 @@ export async function saveTranslation(formData: FormData) {
   };
 
   for (const field of request.config.fields) {
-    const value = String(formData.get(field) ?? "").trim();
+    const value = readText(formData, field, field === "title" ? MAX_TITLE_LENGTH : MAX_TEXT_LENGTH);
     payload[field] = value || null;
   }
 
   const requiredValue = String(payload[request.config.required] ?? "").trim();
   if (!requiredValue) return;
 
-  await supabase
+  const { error } = await supabase
     .from(request.table)
     .upsert(payload, { onConflict: `${request.config.idColumn},language_code` });
+  if (error) return;
 
   revalidatePath("/admin/translations");
 }
 
 export async function updateTranslationStatus(formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
-  if (profile.role === "student") redirect("/dashboard");
-
+  const profile = await requireTranslationManager();
   const request = parseRequest(formData);
   const status = formData.get("status");
   if (!request || typeof status !== "string" || !STATUSES.has(status)) return;
 
   const supabase = await createClient();
+  await enforceRateLimit(supabase, profile.id, "admin_translation_status", 240, 3600);
+
   const patch: Record<string, unknown> = { status };
   if (status === "published" || status === "archived") {
     patch.reviewed_by = profile.id;
@@ -86,29 +105,30 @@ export async function updateTranslationStatus(formData: FormData) {
     patch.reviewed_at = null;
   }
 
-  await supabase
+  const { error } = await supabase
     .from(request.table)
     .update(patch)
     .eq(request.config.idColumn, request.id)
     .eq("language_code", request.language);
+  if (error) return;
 
   revalidatePath("/admin/translations");
 }
 
 export async function deleteTranslation(formData: FormData) {
-  const profile = await getCurrentProfile();
-  if (!profile) redirect("/login");
-  if (profile.role === "student") redirect("/dashboard");
-
+  const profile = await requireTranslationManager();
   const request = parseRequest(formData);
   if (!request) return;
 
   const supabase = await createClient();
-  await supabase
+  await enforceRateLimit(supabase, profile.id, "admin_translation_delete", 60, 3600);
+
+  const { error } = await supabase
     .from(request.table)
     .delete()
     .eq(request.config.idColumn, request.id)
     .eq("language_code", request.language);
+  if (error) return;
 
   revalidatePath("/admin/translations");
 }
