@@ -112,11 +112,13 @@ The current schema includes:
 3. **A/L structure** — `institutes`, `streams`, `subjects`, `student_subjects`, `syllabus_units`, `syllabus_topics`, `topic_progress`
 4. **Phase 1 academic foundation** — versioned syllabi, subject/version mapping, competencies, competency levels, optional subtopics, and learning outcomes
 5. **Question bank** — `questions`, `question_attempts`
-6. **Mock exams** — `mock_exams`, `mock_exam_questions`, `mock_exam_attempts`, `mock_exam_answers`
-7. **Study plan** — `study_plan_items`
-8. **Assignments** — `assignments`, `assignment_submissions` plus the `assignment-files` storage bucket and its policies
-9. **Notifications** — `notifications` and the `create_notification()` function
-10. **Mastery** — `topic_mastery` and the `update_topic_mastery()` function
+6. **Examination engine** — exam series, papers, sections, paper/question mappings, marking schemes, and source/licensing metadata
+7. **Mock exams** — `mock_exams`, `mock_exam_questions`, `mock_exam_attempts`, `mock_exam_answers`
+8. **Study plan** — `study_plan_items`
+9. **Assignments** — `assignments`, `assignment_submissions` plus the `assignment-files` storage bucket and its policies
+10. **Notifications** — `notifications` and the `create_notification()` function
+11. **Mastery and intelligence** — `topic_mastery`, `learning_outcome_mastery`, `practice_recommendations`, and their refresh functions
+12. **Phase 5 multilingual foundation** — `content_languages`, localized syllabus structure, question translations, and course/module/lesson translations
 
 The Phase 1 migration is stored at:
 
@@ -124,9 +126,16 @@ The Phase 1 migration is stored at:
 supabase/migrations/20260917150000_phase1_academic_foundation.sql
 ```
 
-It is additive: the existing stream → subject → unit → topic structure remains valid, while new content can opt into a syllabus version and continue down to competency → competency level → subtopic → learning outcome.
+The Phase 5 language foundation is stored in:
 
-> Do not populate official Sri Lankan syllabus content from memory or unverified sources. Version records should identify their verified source before being treated as official content.
+```text
+supabase/migrations/20260917190000_phase5_multilingual_content_foundation.sql
+supabase/migrations/20260917190500_phase5_translation_security_hardening.sql
+```
+
+It supports **English (`en`)**, **Sinhala (`si`)**, and **Tamil (`ta`)** without duplicating the underlying academic entities. Translations are optional, and the application can fall back from Sinhala/Tamil to English when a localized value is unavailable. A student's `preferred_language` is stored separately from the existing academic `medium` so language preference does not alter subject/stream semantics.
+
+> Do not populate official Sri Lankan syllabus content from memory or unverified sources. Version records should identify their verified source before being treated as official content. Do not machine-translate official material and present it as verified curriculum without review.
 
 ### 4.4 Create the storage bucket
 
