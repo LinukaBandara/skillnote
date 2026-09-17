@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { TopicStatus } from "@/types/db";
@@ -24,6 +25,25 @@ export async function updateTopicStatus(
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+  await enforceRateLimit(supabase, user.id, "topic_status_update", 120, 3600);
+
+  if (!topicId || topicId.length > 100 || !subjectId || subjectId.length > 100) return;
+  if (!Object.prototype.hasOwnProperty.call(STATUS_PERCENT, status)) return;
+
+  const { data: topic } = await supabase
+    .from("syllabus_topics")
+    .select("id, unit_id")
+    .eq("id", topicId)
+    .maybeSingle();
+  if (!topic) return;
+
+  const { data: unit } = await supabase
+    .from("syllabus_units")
+    .select("id, subject_id")
+    .eq("id", topic.unit_id)
+    .eq("subject_id", subjectId)
+    .maybeSingle();
+  if (!unit) return;
 
   await supabase.from("topic_progress").upsert(
     {
