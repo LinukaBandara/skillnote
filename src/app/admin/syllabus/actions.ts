@@ -53,14 +53,7 @@ export async function createCompetency(formData: FormData) {
   const title = text(formData, "title");
   if (!syllabusVersionId || !subjectId || !code || !title) return;
 
-  await supabase.from("syllabus_competencies").insert({
-    syllabus_version_id: syllabusVersionId,
-    subject_id: subjectId,
-    code,
-    title,
-    description: optionalText(formData, "description"),
-    position: position(formData),
-  });
+  await supabase.from("syllabus_competencies").insert({ syllabus_version_id: syllabusVersionId, subject_id: subjectId, code, title, description: optionalText(formData, "description"), position: position(formData) });
   revalidatePath("/admin/syllabus");
 }
 
@@ -68,16 +61,17 @@ export async function createCompetencyLevel(formData: FormData) {
   await requirePlatformAdmin();
   const supabase = await createClient();
   const competencyId = text(formData, "competency_id");
-  const syllabusVersionId = text(formData, "syllabus_version_id");
-  const subjectId = text(formData, "subject_id");
   const code = text(formData, "code");
   const title = text(formData, "title");
-  if (!competencyId || !syllabusVersionId || !subjectId || !code || !title) return;
+  if (!competencyId || !code || !title) return;
+
+  const { data: competency } = await supabase.from("syllabus_competencies").select("syllabus_version_id, subject_id").eq("id", competencyId).single();
+  if (!competency) return;
 
   await supabase.from("syllabus_competency_levels").insert({
     competency_id: competencyId,
-    syllabus_version_id: syllabusVersionId,
-    subject_id: subjectId,
+    syllabus_version_id: competency.syllabus_version_id,
+    subject_id: competency.subject_id,
     code,
     title,
     description: optionalText(formData, "description"),
@@ -93,12 +87,7 @@ export async function createSubtopic(formData: FormData) {
   const title = text(formData, "title");
   if (!topicId || !title) return;
 
-  await supabase.from("syllabus_subtopics").insert({
-    topic_id: topicId,
-    title,
-    description: optionalText(formData, "description"),
-    position: position(formData),
-  });
+  await supabase.from("syllabus_subtopics").insert({ topic_id: topicId, title, description: optionalText(formData, "description"), position: position(formData) });
   revalidatePath("/admin/syllabus");
 }
 
@@ -109,11 +98,6 @@ export async function createLearningOutcome(formData: FormData) {
   const statement = text(formData, "statement");
   if (!subtopicId || !statement) return;
 
-  await supabase.from("syllabus_learning_outcomes").insert({
-    subtopic_id: subtopicId,
-    code: optionalText(formData, "code"),
-    statement,
-    position: position(formData),
-  });
+  await supabase.from("syllabus_learning_outcomes").insert({ subtopic_id: subtopicId, code: optionalText(formData, "code"), statement, position: position(formData) });
   revalidatePath("/admin/syllabus");
 }
