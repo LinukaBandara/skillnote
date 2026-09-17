@@ -10,10 +10,11 @@ export default async function AdminSyllabusPage() {
   if (profile.role !== "platform_admin") redirect("/admin");
 
   const supabase = await createClient();
-  const [{ data: versions }, { data: subjects }, { data: competencies }, { data: topics }, { data: subtopics }] = await Promise.all([
+  const [{ data: versions }, { data: subjects }, { data: competencies }, { data: competencyLevels }, { data: topics }, { data: subtopics }] = await Promise.all([
     supabase.from("syllabus_versions").select("*").order("created_at", { ascending: false }),
     supabase.from("subjects").select("id, name").order("name"),
     supabase.from("syllabus_competencies").select("id, code, title, syllabus_version_id, subject_id, syllabus_versions(name), subjects(name)").order("position"),
+    supabase.from("syllabus_competency_levels").select("id, code, title, position, competency_id, syllabus_competencies(code, title)").order("position"),
     supabase.from("syllabus_topics").select("id, title, syllabus_units(subject_id, subjects(name))").order("title"),
     supabase.from("syllabus_subtopics").select("id, title, topic_id, syllabus_topics(title)").order("title"),
   ]);
@@ -51,6 +52,7 @@ export default async function AdminSyllabusPage() {
             <input name="code" required placeholder="Level code" className="field" /><input name="title" required placeholder="Level title" className="field" />
             <textarea name="description" placeholder="Description (optional)" className="field md:col-span-2" rows={2} /><input name="position" type="number" min="1" defaultValue="1" className="field" /><button className="btn-primary px-5 py-2.5 rounded-full text-sm font-medium">Add competency level</button>
           </form>
+          <div className="mt-5 border-t border-rule">{(competencyLevels ?? []).map((level) => { const competency = Array.isArray(level.syllabus_competencies) ? level.syllabus_competencies[0] : level.syllabus_competencies; return <div key={level.id} className="py-3 border-b border-rule"><p className="text-sm font-medium">{level.code} · {level.title}</p><p className="text-xs text-ink-soft mt-1">{competency?.code ?? "Competency"} · {competency?.title ?? ""}</p></div>; })}{(competencyLevels ?? []).length === 0 && <p className="py-4 text-sm text-ink-soft">No competency levels yet.</p>}</div>
         </section>
 
         <section>
