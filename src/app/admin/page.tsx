@@ -20,6 +20,9 @@ export default async function AdminPage() {
   const { count: examCount } = await supabase
     .from("mock_exams")
     .select("*", { count: "exact", head: true });
+  const { count: paperCount } = await supabase
+    .from("papers")
+    .select("*", { count: "exact", head: true });
 
   return (
     <AppShell activeHref="/admin" isStaff showInstitutes={profile.role !== "teacher"}>
@@ -37,6 +40,12 @@ export default async function AdminPage() {
           <li className="border-b border-rule">
             <Link href="/admin/questions" className="flex items-center justify-between py-5 group">
               <div><h2 className="text-base font-medium group-hover:text-cobalt transition-colors">Question bank</h2><p className="text-sm text-ink-soft mt-1">{questionCount ?? 0} question{questionCount === 1 ? "" : "s"}</p></div>
+              <span className="text-sm text-ink-faint group-hover:text-cobalt transition-colors">Manage</span>
+            </Link>
+          </li>
+          <li className="border-b border-rule">
+            <Link href="/admin/exams" className="flex items-center justify-between py-5 group">
+              <div><h2 className="text-base font-medium group-hover:text-cobalt transition-colors">Examination engine</h2><p className="text-sm text-ink-soft mt-1">{paperCount ?? 0} paper{paperCount === 1 ? "" : "s"} · series, sections and marking</p></div>
               <span className="text-sm text-ink-faint group-hover:text-cobalt transition-colors">Manage</span>
             </Link>
           </li>
