@@ -1,3 +1,5 @@
+"use client";
+
 import { updatePreferredLanguage } from "@/app/language/actions";
 import type { PreferredLanguage } from "@/types/db";
 
