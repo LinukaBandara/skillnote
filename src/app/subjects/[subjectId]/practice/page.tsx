@@ -9,6 +9,16 @@ import { languageFallbackChain } from "@/types/language";
 
 type Mode = "all" | "adaptive" | "weak" | "revision";
 
+type QuestionForClient = {
+  id: string;
+  question_text: string;
+  options: string[];
+  correct_index: number;
+  year: number | null;
+  difficulty: string;
+  source: string | null;
+};
+
 const MODES: { key: Mode; label: string; blurb: string }[] = [
   { key: "all", label: "All questions", blurb: "Every question for this subject." },
   { key: "adaptive", label: "Adaptive", blurb: "Difficulty matched to your current mastery." },
@@ -16,16 +26,37 @@ const MODES: { key: Mode; label: string; blurb: string }[] = [
   { key: "revision", label: "Due for revision", blurb: "Topics scheduled for review today." },
 ];
 
-function localizedTitle(
-  rows: { language_code: string; title: string | null }[] | null,
-  language: "en" | "si" | "ta",
-  fallback: string,
-) {
+function localizedTitle(rows: { language_code: string; title: string | null }[] | null, language: "en" | "si" | "ta", fallback: string) {
   for (const code of languageFallbackChain(language)) {
     const row = rows?.find((item) => item.language_code === code);
     if (row?.title) return row.title;
   }
   return fallback;
+}
+
+function localizedQuestion(
+  question: { id: string; question_text: string; options: unknown; correct_index: number; year: number | null; difficulty: string; source: string | null },
+  rows: { language_code: string; question_text: string | null; options: unknown }[] | undefined,
+  language: "en" | "si" | "ta",
+): QuestionForClient {
+  const translation = languageFallbackChain(language)
+    .map((code) => rows?.find((row) => row.language_code === code))
+    .find((row) => row?.question_text);
+  const options = Array.isArray(translation?.options) && translation.options.every((item) => typeof item === "string")
+    ? translation.options as string[]
+    : Array.isArray(question.options) && question.options.every((item) => typeof item === "string")
+      ? question.options as string[]
+      : [];
+
+  return {
+    id: question.id,
+    question_text: translation?.question_text ?? question.question_text,
+    options,
+    correct_index: question.correct_index,
+    year: question.year,
+    difficulty: question.difficulty,
+    source: question.source,
+  };
 }
 
 export default async function PracticePage({
@@ -63,22 +94,12 @@ export default async function PracticePage({
     translationMap.set(row.topic_id, existing);
   }
 
-  const subjectTopicIds = topicIds;
-
-  const { data: yearsRaw } = await supabase
-    .from("questions")
-    .select("year")
-    .eq("subject_id", subjectId)
-    .not("year", "is", null);
+  const { data: yearsRaw } = await supabase.from("questions").select("year").eq("subject_id", subjectId).not("year", "is", null);
   const years = Array.from(new Set((yearsRaw ?? []).map((r) => r.year))).sort((a, b) => (b ?? 0) - (a ?? 0));
 
   let mastery: { topic_id: string; mastery: number; due_at: string }[] = [];
-  if (profile && subjectTopicIds.length > 0) {
-    const { data } = await supabase
-      .from("topic_mastery")
-      .select("topic_id, mastery, due_at")
-      .eq("student_id", profile.id)
-      .in("topic_id", subjectTopicIds);
+  if (profile && topicIds.length > 0) {
+    const { data } = await supabase.from("topic_mastery").select("topic_id, mastery, due_at").eq("student_id", profile.id).in("topic_id", topicIds);
     mastery = data ?? [];
   }
 
@@ -101,6 +122,19 @@ export default async function PracticePage({
   }
 
   const { data: questions } = await query;
+  const questionIds = (questions ?? []).map((question) => question.id);
+  const { data: questionTranslations } = questionIds.length
+    ? await supabase.from("question_translations").select("question_id, language_code, question_text, options").in("question_id", questionIds)
+    : { data: [] as { question_id: string; language_code: string; question_text: string | null; options: unknown }[] };
+
+  const questionTranslationMap = new Map<string, { language_code: string; question_text: string | null; options: unknown }[]>();
+  for (const row of questionTranslations ?? []) {
+    const existing = questionTranslationMap.get(row.question_id) ?? [];
+    existing.push(row);
+    questionTranslationMap.set(row.question_id, existing);
+  }
+
+  const localizedQuestions = (questions ?? []).map((question) => localizedQuestion(question, questionTranslationMap.get(question.id), language));
   const activeMode = MODES.find((m) => m.key === mode)!;
 
   const buildHref = (m: Mode) => {
@@ -113,10 +147,7 @@ export default async function PracticePage({
     return `/subjects/${subjectId}/practice${qs ? `?${qs}` : ""}`;
   };
 
-  const filterTopics = (topics ?? []).map((t) => ({
-    id: t.id,
-    title: localizedTitle(translationMap.get(t.id) ?? null, language, t.title),
-  }));
+  const filterTopics = (topics ?? []).map((t) => ({ id: t.id, title: localizedTitle(translationMap.get(t.id) ?? null, language, t.title) }));
 
   return (
     <MaybeShell isLoggedIn={!!profile} isStaff={profile ? profile.role !== "student" : false} activeHref="/practice">
@@ -126,44 +157,22 @@ export default async function PracticePage({
       {profile && (
         <div className="flex flex-wrap gap-2 mb-6">
           {MODES.map((m) => (
-            <Link key={m.key} href={buildHref(m.key)} className={`text-xs px-3.5 py-2 rounded-full border transition-colors ${m.key === mode ? "bg-ink text-white border-ink" : "border-rule text-ink-soft hover:border-ink-faint"}`}>
-              {m.label}
-            </Link>
+            <Link key={m.key} href={buildHref(m.key)} className={`text-xs px-3.5 py-2 rounded-full border transition-colors ${m.key === mode ? "bg-ink text-white border-ink" : "border-rule text-ink-soft hover:border-ink-faint"}`}>{m.label}</Link>
           ))}
         </div>
       )}
 
       {profile && avgMastery !== null && (
         <div className="clay p-4 mb-6 flex items-center justify-between">
-          <div>
-            <p className="section-label mb-1">Your mastery in {subject.name}</p>
-            <p className="text-xs text-ink-faint">Based on {mastery.length} tracked topic{mastery.length === 1 ? "" : "s"}</p>
-          </div>
+          <div><p className="section-label mb-1">Your mastery in {subject.name}</p><p className="text-xs text-ink-faint">Based on {mastery.length} tracked topic{mastery.length === 1 ? "" : "s"}</p></div>
           <p className="text-[22px] font-bold tracking-[-0.03em]">{avgMastery}%</p>
         </div>
       )}
 
-      <PracticeFilters
-        subjectId={subjectId}
-        topics={filterTopics}
-        years={years.filter((y): y is number => y !== null)}
-        current={{ topic, year, difficulty }}
-      />
+      <PracticeFilters subjectId={subjectId} topics={filterTopics} years={years.filter((y): y is number => y !== null)} current={{ topic, year, difficulty }} />
 
       <div className="mt-8">
-        <PracticeClient
-          key={`${mode}-${topic ?? ""}-${year ?? ""}-${difficulty ?? ""}`}
-          questions={(questions ?? []) as unknown as {
-            id: string;
-            question_text: string;
-            options: string[];
-            correct_index: number;
-            year: number | null;
-            difficulty: string;
-            source: string | null;
-          }[]}
-          subjectId={subjectId}
-        />
+        <PracticeClient key={`${mode}-${topic ?? ""}-${year ?? ""}-${difficulty ?? ""}`} questions={localizedQuestions} subjectId={subjectId} />
       </div>
     </MaybeShell>
   );
