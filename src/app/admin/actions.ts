@@ -5,20 +5,44 @@ import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-async function requireStaff() {
+async function requireAdmin() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role === "student") redirect("/dashboard");
+  if (profile.role !== "platform_admin" && profile.role !== "institute_admin") {
+    redirect("/dashboard");
+  }
   return profile;
 }
 
-export async function createCourse(formData: FormData) {
-  const profile = await requireStaff();
-  const supabase = await createClient();
+async function requireCourseManager(courseId: string) {
+  const profile = await requireAdmin();
+  if (!courseId) redirect("/admin/courses");
 
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const subjectId = (formData.get("subject_id") as string) || null;
+  const supabase = await createClient();
+  const { data: course } = await supabase
+    .from("courses")
+    .select("id, institute_id")
+    .eq("id", courseId)
+    .single();
+
+  if (!course) redirect("/admin/courses");
+  if (profile.role === "institute_admin" && profile.institute_id !== course.institute_id) {
+    redirect("/admin/courses");
+  }
+
+  return { profile, supabase, course };
+}
+
+export async function createCourse(formData: FormData) {
+  const profile = await requireAdmin();
+  if (!profile.institute_id && profile.role !== "platform_admin") return;
+
+  const supabase = await createClient();
+  const title = String(formData.get("title") ?? "").trim().slice(0, 160);
+  const description = String(formData.get("description") ?? "").trim().slice(0, 10000);
+  const subjectId = String(formData.get("subject_id") ?? "").trim() || null;
+
+  if (!title) return;
 
   const { data: course } = await supabase
     .from("courses")
@@ -38,20 +62,19 @@ export async function createCourse(formData: FormData) {
 }
 
 export async function togglePublish(courseId: string, published: boolean) {
-  await requireStaff();
-  const supabase = await createClient();
+  const { supabase } = await requireCourseManager(courseId);
 
-  await supabase.from("courses").update({ published }).eq("id", courseId);
+  await supabase.from("courses").update({ published: Boolean(published) }).eq("id", courseId);
 
   revalidatePath("/admin/courses");
   revalidatePath(`/admin/courses/${courseId}`);
 }
 
 export async function addModule(courseId: string, formData: FormData) {
-  await requireStaff();
-  const supabase = await createClient();
+  const { supabase } = await requireCourseManager(courseId);
 
-  const title = formData.get("title") as string;
+  const title = String(formData.get("title") ?? "").trim().slice(0, 160);
+  if (!title) return;
 
   const { count } = await supabase
     .from("modules")
@@ -72,12 +95,22 @@ export async function addLesson(
   courseId: string,
   formData: FormData
 ) {
-  await requireStaff();
-  const supabase = await createClient();
+  const { supabase } = await requireCourseManager(courseId);
 
-  const title = formData.get("title") as string;
-  const content = formData.get("content") as string;
-  const videoUrl = (formData.get("video_url") as string) || null;
+  const { data: module } = await supabase
+    .from("modules")
+    .select("id, course_id")
+    .eq("id", moduleId)
+    .eq("course_id", courseId)
+    .single();
+  if (!module) return;
+
+  const title = String(formData.get("title") ?? "").trim().slice(0, 160);
+  const content = String(formData.get("content") ?? "").trim().slice(0, 100000);
+  const rawVideoUrl = String(formData.get("video_url") ?? "").trim();
+  const videoUrl = rawVideoUrl ? rawVideoUrl.slice(0, 2048) : null;
+
+  if (!title) return;
 
   const { count } = await supabase
     .from("lessons")
