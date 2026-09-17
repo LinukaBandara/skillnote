@@ -1,14 +1,42 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+}
+
 :root {
-  --background: #ffffff;
+  --background: #f7f8fa;
   --foreground: #111318;
+  --ink: #111318;
+  --ink-soft: #4b5563;
+  --ink-faint: #6b7280;
+  --line: #e5e7eb;
+  --surface: #ffffff;
+  --surface-soft: #f3f4f6;
+  --accent: #2c4be0;
+  --accent-soft: #eef2ff;
+  --font-inter: Arial, Helvetica, sans-serif;
+  --font-geist-mono: "SFMono-Regular", Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--background); color: var(--foreground); }
+a { color: inherit; text-decoration: none; }
 button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-:focus-visible { outline: 3px solid #2C4BE0; outline-offset: 2px; }
-::selection { background: #dbe4ff; color: #111318; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+::selection { background: #dbe4ff; color: var(--ink); }
+
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+.text-ink { color: var(--ink); }
+.text-ink-soft { color: var(--ink-soft); }
+.text-ink-faint { color: var(--ink-faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
