@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/supabase/get-profile";
 import { Logo } from "@/components/Logo";
+import { LanguageSwitcher } from "@/components/dashboard/LanguageSwitcher";
 
 const STUDENT_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "home" },
@@ -39,7 +41,7 @@ function Icon({ name }: { name: string }) {
     case "calendar":
       return (<svg className={common} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="5.5" width="16" height="15" rx="2" /><path d="M4 10h16M8 3.5v3M16 3.5v3" strokeLinecap="round" /></svg>);
     case "settings":
-      return (<svg className={common} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3" /><path d="M19.4 13.5c.1-.5.1-1 0-1.5l1.6-1.2-1.5-2.6-1.9.7c-.4-.3-.8-.6-1.3-.8L16 6h-3l-.3 2.1c-.5.2-.9.5-1.3.8l-1.9-.7-1.5 2.6L9.6 12c-.1.5-.1 1 0 1.5l-1.6 1.2 1.5 2.6 1.9-.7c.4.3.8.6 1.3.8L13 20h3l.3-2.1c.5-.2.9-.5 1.3-.8l1.9.7 1.5-2.6-1.6-1.2Z" strokeLinejoin="round" /></svg>);
+      return (<svg className={common} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3" /><path d="M19.4 13.5c.1-.5.1-1 0-1.5l1.6-1.2-1.5-2.6-1.9.7c-.4-.3-.8-.6-1.3-.8L16 6h-3l-.3 2.1c-.5.2-.9.5-1.3.8l-1.9-.7-1.5 2.6L9.6 12c-.1.5-.1 1 0 1.5l-1.6 1.2 1.5 2.6 1.9-.7c.4-.3.8-.6 1.3-.8L13 20h3l.3-2.1c.5-.2.9-.5 1.3-.8l1.9.7 1.5-2.6-1.6-1.2Z" strokeLinejoin="round" /></svg>);
     case "bell":
       return (<svg className={common} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 9a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 13 6 9Z" strokeLinejoin="round" /><path d="M10 19a2 2 0 0 0 4 0" strokeLinecap="round" /></svg>);
     default:
@@ -51,6 +53,7 @@ export async function DashboardSidebar({ activeHref, isStaff = false, showInstit
   const navItems = isStaff ? (showInstitutes ? [...STAFF_NAV_ITEMS, INSTITUTES_ITEM] : STAFF_NAV_ITEMS) : STUDENT_NAV_ITEMS;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const profile = user ? await getCurrentProfile() : null;
   let unreadCount = 0;
   if (user) {
     const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false);
@@ -68,6 +71,7 @@ export async function DashboardSidebar({ activeHref, isStaff = false, showInstit
         </nav>
       </div>
       <div>
+        {user && <LanguageSwitcher current={profile?.preferred_language ?? "en"} />}
         <div className="rounded-2xl bg-bg-warm p-4 mb-3"><p className="text-xs font-medium text-ink mb-1">Need help?</p><p className="text-xs text-ink-faint mb-3 leading-relaxed">Have a question about Skill Note?</p><a href="mailto:support@skillnote.lk" className="text-xs text-cobalt font-medium">Get support →</a></div>
         <form action={logout} className="px-1"><button className="text-sm text-ink-faint hover:text-ink-soft transition-colors">Sign out</button></form>
       </div>
