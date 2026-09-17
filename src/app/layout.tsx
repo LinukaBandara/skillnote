@@ -12,7 +12,8 @@ export const metadata: Metadata = {
     default: "Skill Note — Smart learning for Sri Lankan A/L students",
     template: "%s | Skill Note",
   },
-  description: "Learn, practice and improve with syllabus tracking, assessments, revision and performance insights for G.C.E. Advanced Level students in Sri Lanka.",
+  description:
+    "Learn, practice and improve with syllabus tracking, assessments, revision and performance insights for G.C.E. Advanced Level students in Sri Lanka.",
   applicationName: "Skill Note",
   robots: { index: true, follow: true },
   openGraph: {
@@ -21,11 +22,13 @@ export const metadata: Metadata = {
     title: "Skill Note — Smart learning for Sri Lankan A/L students",
     description: "Learn, practice and improve with structured A/L learning tools.",
     url: siteUrl,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Skill Note — Smart learning for Sri Lankan A/L students" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Skill Note — Smart learning for Sri Lankan A/L students",
     description: "Learn, practice and improve with structured A/L learning tools.",
+    images: ["/opengraph-image"],
   },
 };
 
