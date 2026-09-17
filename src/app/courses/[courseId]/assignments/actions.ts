@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
@@ -37,6 +38,8 @@ export async function submitAssignment(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  await enforceRateLimit(supabase, user.id, "assignment_submit", 10, 3600);
 
   const { data: assignment, error: assignmentError } = await supabase
     .from("assignments")
@@ -89,7 +92,7 @@ export async function submitAssignment(
       throw new Error("This file type is not allowed. Upload PDF, PNG, JPEG, TXT, DOCX, or XLSX.");
     }
 
-    fileName = file.name.slice(0, 255);
+    fileName = file.name.replace(/[\\/\0]/g, "").trim().slice(0, 255) || `submission${extension}`;
     filePath = `${assignmentId}/${user.id}/${randomUUID()}${extension}`;
 
     const buffer = await file.arrayBuffer();
