@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/get-profile";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -46,6 +47,7 @@ async function requireStaffForCourse(courseId: string) {
 export async function createAssignment(courseId: string, formData: FormData) {
   const { profile } = await requireStaffForCourse(courseId);
   const supabase = await createClient();
+  await enforceRateLimit(supabase, profile.id, "assignment_create", 30, 3600);
 
   const title = String(formData.get("title") ?? "").trim();
   const instructions = String(formData.get("instructions") ?? "").trim();
@@ -86,6 +88,7 @@ export async function gradeSubmission(
 ) {
   const { profile } = await requireStaffForCourse(courseId);
   const supabase = await createClient();
+  await enforceRateLimit(supabase, profile.id, "assignment_grade", 100, 3600);
 
   const grade = Number(formData.get("grade"));
   const feedback = String(formData.get("feedback") ?? "").trim();
