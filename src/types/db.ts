@@ -36,6 +36,7 @@ export interface Subject {
 export interface SyllabusUnit {
   id: string;
   subject_id: string;
+  syllabus_version_id: string | null;
   title: string;
   position: number;
 }
