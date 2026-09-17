@@ -29,7 +29,6 @@ function position(formData: FormData) {
 export async function createSyllabusVersion(formData: FormData) {
   const profile = await requirePlatformAdmin();
   const supabase = await createClient();
-
   const code = text(formData, "code");
   const name = text(formData, "name");
   if (!code || !name) return;
@@ -42,7 +41,48 @@ export async function createSyllabusVersion(formData: FormData) {
     notes: optionalText(formData, "notes"),
     created_by: profile.id,
   });
+  revalidatePath("/admin/syllabus");
+}
 
+export async function createCompetency(formData: FormData) {
+  await requirePlatformAdmin();
+  const supabase = await createClient();
+  const syllabusVersionId = text(formData, "syllabus_version_id");
+  const subjectId = text(formData, "subject_id");
+  const code = text(formData, "code");
+  const title = text(formData, "title");
+  if (!syllabusVersionId || !subjectId || !code || !title) return;
+
+  await supabase.from("syllabus_competencies").insert({
+    syllabus_version_id: syllabusVersionId,
+    subject_id: subjectId,
+    code,
+    title,
+    description: optionalText(formData, "description"),
+    position: position(formData),
+  });
+  revalidatePath("/admin/syllabus");
+}
+
+export async function createCompetencyLevel(formData: FormData) {
+  await requirePlatformAdmin();
+  const supabase = await createClient();
+  const competencyId = text(formData, "competency_id");
+  const syllabusVersionId = text(formData, "syllabus_version_id");
+  const subjectId = text(formData, "subject_id");
+  const code = text(formData, "code");
+  const title = text(formData, "title");
+  if (!competencyId || !syllabusVersionId || !subjectId || !code || !title) return;
+
+  await supabase.from("syllabus_competency_levels").insert({
+    competency_id: competencyId,
+    syllabus_version_id: syllabusVersionId,
+    subject_id: subjectId,
+    code,
+    title,
+    description: optionalText(formData, "description"),
+    position: position(formData),
+  });
   revalidatePath("/admin/syllabus");
 }
 
@@ -59,7 +99,6 @@ export async function createSubtopic(formData: FormData) {
     description: optionalText(formData, "description"),
     position: position(formData),
   });
-
   revalidatePath("/admin/syllabus");
 }
 
@@ -76,6 +115,5 @@ export async function createLearningOutcome(formData: FormData) {
     statement,
     position: position(formData),
   });
-
   revalidatePath("/admin/syllabus");
 }
