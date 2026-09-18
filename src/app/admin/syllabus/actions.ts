@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/get-profile";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -12,30 +13,31 @@ async function requirePlatformAdmin() {
   return profile;
 }
 
-function text(formData: FormData, key: string) {
-  return String(formData.get(key) ?? "").trim();
+function text(formData: FormData, key: string, maxLength = 10000) {
+  return String(formData.get(key) ?? "").trim().slice(0, maxLength);
 }
 
-function optionalText(formData: FormData, key: string) {
-  const value = text(formData, key);
+function optionalText(formData: FormData, key: string, maxLength = 10000) {
+  const value = text(formData, key, maxLength);
   return value || null;
 }
 
 function position(formData: FormData) {
   const value = Number(formData.get("position"));
-  return Number.isInteger(value) && value > 0 ? value : 1;
+  return Number.isInteger(value) && value > 0 && value <= 10000 ? value : 1;
 }
 
 function year(formData: FormData, key: string) {
   const value = Number(formData.get(key));
-  return Number.isInteger(value) && value > 0 ? value : null;
+  return Number.isInteger(value) && value >= 1900 && value <= 2100 ? value : null;
 }
 
 export async function createSyllabusVersion(formData: FormData) {
   const profile = await requirePlatformAdmin();
   const supabase = await createClient();
-  const code = text(formData, "code");
-  const name = text(formData, "name");
+  await enforceRateLimit(supabase, profile.id, "admin_syllabus_version_create", 30, 3600);
+  const code = text(formData, "code", 100);
+  const name = text(formData, "name", 200);
   const academicYearFrom = year(formData, "academic_year_from");
   const academicYearTo = year(formData, "academic_year_to");
 
@@ -47,21 +49,22 @@ export async function createSyllabusVersion(formData: FormData) {
     name,
     academic_year_from: academicYearFrom,
     academic_year_to: academicYearTo,
-    notes: optionalText(formData, "notes"),
+    notes: optionalText(formData, "notes", 10000),
     created_by: profile.id,
   });
 
-  if (error) throw new Error(`Unable to create syllabus version: ${error.message}`);
+  if (error) throw new Error("Unable to create syllabus version.");
   revalidatePath("/admin/syllabus");
 }
 
 export async function createCompetency(formData: FormData) {
-  await requirePlatformAdmin();
+  const profile = await requirePlatformAdmin();
   const supabase = await createClient();
-  const syllabusVersionId = text(formData, "syllabus_version_id");
-  const subjectId = text(formData, "subject_id");
-  const code = text(formData, "code");
-  const title = text(formData, "title");
+  await enforceRateLimit(supabase, profile.id, "admin_competency_create", 120, 3600);
+  const syllabusVersionId = text(formData, "syllabus_version_id", 100);
+  const subjectId = text(formData, "subject_id", 100);
+  const code = text(formData, "code", 100);
+  const title = text(formData, "title", 300);
 
   if (!syllabusVersionId || !subjectId || !code || !title) return;
 
@@ -74,23 +77,24 @@ export async function createCompetency(formData: FormData) {
     position: position(formData),
   });
 
-  if (competencyError) throw new Error(`Unable to create competency: ${competencyError.message}`);
+  if (competencyError) throw new Error("Unable to create competency.");
 
   const { error: linkError } = await supabase.from("syllabus_version_subjects").upsert(
     { syllabus_version_id: syllabusVersionId, subject_id: subjectId },
     { onConflict: "syllabus_version_id,subject_id", ignoreDuplicates: true },
   );
 
-  if (linkError) throw new Error(`Competency created, but subject-version link failed: ${linkError.message}`);
+  if (linkError) throw new Error("Competency created, but subject-version link failed.");
   revalidatePath("/admin/syllabus");
 }
 
 export async function createCompetencyLevel(formData: FormData) {
-  await requirePlatformAdmin();
+  const profile = await requirePlatformAdmin();
   const supabase = await createClient();
-  const competencyId = text(formData, "competency_id");
-  const code = text(formData, "code");
-  const title = text(formData, "title");
+  await enforceRateLimit(supabase, profile.id, "admin_competency_level_create", 120, 3600);
+  const competencyId = text(formData, "competency_id", 100);
+  const code = text(formData, "code", 100);
+  const title = text(formData, "title", 300);
   if (!competencyId || !code || !title) return;
 
   const { data: competency, error: competencyError } = await supabase
@@ -111,15 +115,16 @@ export async function createCompetencyLevel(formData: FormData) {
     position: position(formData),
   });
 
-  if (error) throw new Error(`Unable to create competency level: ${error.message}`);
+  if (error) throw new Error("Unable to create competency level.");
   revalidatePath("/admin/syllabus");
 }
 
 export async function createSubtopic(formData: FormData) {
-  await requirePlatformAdmin();
+  const profile = await requirePlatformAdmin();
   const supabase = await createClient();
-  const topicId = text(formData, "topic_id");
-  const title = text(formData, "title");
+  await enforceRateLimit(supabase, profile.id, "admin_subtopic_create", 120, 3600);
+  const topicId = text(formData, "topic_id", 100);
+  const title = text(formData, "title", 300);
   if (!topicId || !title) return;
 
   const { error } = await supabase.from("syllabus_subtopics").insert({
@@ -129,24 +134,25 @@ export async function createSubtopic(formData: FormData) {
     position: position(formData),
   });
 
-  if (error) throw new Error(`Unable to create subtopic: ${error.message}`);
+  if (error) throw new Error("Unable to create subtopic.");
   revalidatePath("/admin/syllabus");
 }
 
 export async function createLearningOutcome(formData: FormData) {
-  await requirePlatformAdmin();
+  const profile = await requirePlatformAdmin();
   const supabase = await createClient();
-  const subtopicId = text(formData, "subtopic_id");
-  const statement = text(formData, "statement");
+  await enforceRateLimit(supabase, profile.id, "admin_learning_outcome_create", 120, 3600);
+  const subtopicId = text(formData, "subtopic_id", 100);
+  const statement = text(formData, "statement", 5000);
   if (!subtopicId || !statement) return;
 
   const { error } = await supabase.from("syllabus_learning_outcomes").insert({
     subtopic_id: subtopicId,
-    code: optionalText(formData, "code"),
+    code: optionalText(formData, "code", 100),
     statement,
     position: position(formData),
   });
 
-  if (error) throw new Error(`Unable to create learning outcome: ${error.message}`);
+  if (error) throw new Error("Unable to create learning outcome.");
   revalidatePath("/admin/syllabus");
 }
