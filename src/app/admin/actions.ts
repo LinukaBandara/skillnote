@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/get-profile";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -38,13 +39,20 @@ export async function createCourse(formData: FormData) {
   if (!profile.institute_id && profile.role !== "platform_admin") return;
 
   const supabase = await createClient();
+  await enforceRateLimit(supabase, profile.id, "admin_course_create", 20, 3600);
+
   const title = String(formData.get("title") ?? "").trim().slice(0, 160);
   const description = String(formData.get("description") ?? "").trim().slice(0, 10000);
   const subjectId = String(formData.get("subject_id") ?? "").trim() || null;
 
   if (!title) return;
 
-  const { data: course } = await supabase
+  if (subjectId) {
+    const { data: subject } = await supabase.from("subjects").select("id").eq("id", subjectId).maybeSingle();
+    if (!subject) return;
+  }
+
+  const { data: course, error } = await supabase
     .from("courses")
     .insert({
       title,
@@ -57,12 +65,15 @@ export async function createCourse(formData: FormData) {
     .select()
     .single();
 
+  if (error) throw new Error("Unable to create the course.");
+
   revalidatePath("/admin/courses");
   if (course) redirect(`/admin/courses/${course.id}`);
 }
 
 export async function togglePublish(courseId: string, published: boolean) {
-  const { supabase } = await requireCourseManager(courseId);
+  const { profile, supabase } = await requireCourseManager(courseId);
+  await enforceRateLimit(supabase, profile.id, "admin_course_publish", 60, 3600);
 
   await supabase.from("courses").update({ published: Boolean(published) }).eq("id", courseId);
 
@@ -71,7 +82,8 @@ export async function togglePublish(courseId: string, published: boolean) {
 }
 
 export async function addModule(courseId: string, formData: FormData) {
-  const { supabase } = await requireCourseManager(courseId);
+  const { profile, supabase } = await requireCourseManager(courseId);
+  await enforceRateLimit(supabase, profile.id, "admin_module_create", 60, 3600);
 
   const title = String(formData.get("title") ?? "").trim().slice(0, 160);
   if (!title) return;
@@ -81,11 +93,13 @@ export async function addModule(courseId: string, formData: FormData) {
     .select("*", { count: "exact", head: true })
     .eq("course_id", courseId);
 
-  await supabase.from("modules").insert({
+  const { error } = await supabase.from("modules").insert({
     course_id: courseId,
     title,
     position: (count ?? 0) + 1,
   });
+
+  if (error) throw new Error("Unable to create the module.");
 
   revalidatePath(`/admin/courses/${courseId}`);
 }
@@ -95,7 +109,8 @@ export async function addLesson(
   courseId: string,
   formData: FormData
 ) {
-  const { supabase } = await requireCourseManager(courseId);
+  const { profile, supabase } = await requireCourseManager(courseId);
+  await enforceRateLimit(supabase, profile.id, "admin_lesson_create", 120, 3600);
 
   const { data: module } = await supabase
     .from("modules")
@@ -117,13 +132,15 @@ export async function addLesson(
     .select("*", { count: "exact", head: true })
     .eq("module_id", moduleId);
 
-  await supabase.from("lessons").insert({
+  const { error } = await supabase.from("lessons").insert({
     module_id: moduleId,
     title,
     content,
     video_url: videoUrl,
     position: (count ?? 0) + 1,
   });
+
+  if (error) throw new Error("Unable to create the lesson.");
 
   revalidatePath(`/admin/courses/${courseId}`);
 }
