@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { redirect } from "next/navigation";
 
 const MAX_EMAIL_LENGTH = 254;
@@ -25,8 +24,6 @@ export async function login(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await enforceRateLimit(supabase, email, "auth_login", 10, 900);
-
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -48,8 +45,6 @@ export async function signup(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await enforceRateLimit(supabase, email, "auth_signup", 5, 3600);
-
   const { error } = await supabase.auth.signUp({
     email,
     password,
