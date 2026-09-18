@@ -19,15 +19,17 @@ async function requireUser() {
 export async function enrollInCourse(courseId: string) {
   const { supabase, user } = await requireUser();
   await enforceRateLimit(supabase, user.id, "course_enroll", 20, 3600);
-  if (!courseId) return;
+  if (!courseId || courseId.length > 100) return;
 
   const { data: course } = await supabase.from("courses").select("id").eq("id", courseId).single();
   if (!course) return;
 
-  await supabase.from("enrollments").upsert(
+  const { error } = await supabase.from("enrollments").upsert(
     { student_id: user.id, course_id: courseId },
     { onConflict: "student_id,course_id", ignoreDuplicates: true }
   );
+  if (error) throw new Error("Unable to enroll in the course.");
+
   revalidatePath(`/courses/${courseId}`);
 }
 
@@ -52,7 +54,7 @@ export async function markLessonComplete(lessonId: string, courseId: string) {
     .maybeSingle();
   if (!enrollment) return;
 
-  await supabase.from("lesson_progress").upsert(
+  const { error: progressError } = await supabase.from("lesson_progress").upsert(
     {
       student_id: user.id,
       lesson_id: lessonId,
@@ -61,6 +63,7 @@ export async function markLessonComplete(lessonId: string, courseId: string) {
     },
     { onConflict: "student_id,lesson_id" }
   );
+  if (progressError) throw new Error("Unable to save lesson progress.");
 
   const { data: modules } = await supabase
     .from("modules")
@@ -117,9 +120,9 @@ export async function submitQuizAttempt(
 
   const { data: quiz } = await supabase
     .from("quizzes")
-    .select("id, passing_score")
+    .select("id, passing_score, modules!inner(course_id)")
     .eq("id", quizId)
-    .eq("course_id", courseId)
+    .eq("modules.course_id", courseId)
     .single();
   if (!quiz) return { score: 0, passed: false };
 
@@ -133,26 +136,28 @@ export async function submitQuizAttempt(
 
   const { data: questions } = await supabase
     .from("quiz_questions")
-    .select("id, correct_index")
+    .select("id, correct_index, options")
     .eq("quiz_id", quizId)
     .order("position");
 
   const qs = questions ?? [];
-  const normalizedAnswers = qs.map((_, i) => {
+  const normalizedAnswers = qs.map((q, i) => {
     const value = answers[i];
-    return Number.isInteger(value) && value >= 0 ? value : null;
+    const options = Array.isArray(q.options) ? q.options : [];
+    return Number.isInteger(value) && value >= 0 && (options.length === 0 || value < options.length) ? value : null;
   });
   const correctCount = qs.filter((q, i) => normalizedAnswers[i] === q.correct_index).length;
   const score = qs.length > 0 ? Math.round((correctCount / qs.length) * 100) : 0;
   const passed = score >= (quiz.passing_score ?? 70);
 
-  await supabase.from("quiz_attempts").insert({
+  const { error: attemptError } = await supabase.from("quiz_attempts").insert({
     student_id: user.id,
     quiz_id: quizId,
     score,
     passed,
     answers: normalizedAnswers,
   });
+  if (attemptError) throw new Error("Unable to save quiz attempt.");
 
   revalidatePath(`/courses/${courseId}`);
   return { score, passed };
@@ -174,12 +179,13 @@ export async function createDiscussionThread(
 
   const { data: thread } = await supabase
     .from("discussion_threads")
-    .insert({ course_id: courseId, student_id: user.id, title, })
+    .insert({ course_id: courseId, student_id: user.id, title })
     .select()
     .single();
 
   if (thread) {
-    await supabase.from("discussion_comments").insert({ thread_id: thread.id, author_id: user.id, content: firstComment });
+    const { error } = await supabase.from("discussion_comments").insert({ thread_id: thread.id, author_id: user.id, content: firstComment });
+    if (error) throw new Error("Unable to save discussion comment.");
   }
 
   revalidatePath(`/courses/${courseId}/discussions`);
@@ -203,7 +209,8 @@ export async function addComment(threadId: string, courseId: string, content: st
   const { data: enrollment } = await supabase.from("enrollments").select("id").eq("student_id", user.id).eq("course_id", courseId).maybeSingle();
   if (!enrollment) return;
 
-  await supabase.from("discussion_comments").insert({ thread_id: threadId, author_id: user.id, content });
+  const { error } = await supabase.from("discussion_comments").insert({ thread_id: threadId, author_id: user.id, content });
+  if (error) throw new Error("Unable to save discussion comment.");
 
   if (thread.student_id !== user.id) {
     await supabase.rpc("create_notification", {
