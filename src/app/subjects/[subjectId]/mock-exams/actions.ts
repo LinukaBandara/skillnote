@@ -21,7 +21,6 @@ export async function startMockExam(examId: string) {
 
   if (examError || !exam) throw new Error("Mock exam not found.");
 
-  // Reuse an existing in-progress attempt so refreshes do not create duplicates.
   const { data: existing } = await supabase
     .from("mock_exam_attempts")
     .select("id")
@@ -68,6 +67,9 @@ export async function submitMockExam(
 
   await enforceRateLimit(supabase, user.id, "mock_exam_submit", 10, 3600);
 
+  if (!attemptId || attemptId.length > 100) {
+    throw new Error("Invalid exam attempt.");
+  }
   if (!Array.isArray(answers) || answers.length > 500) {
     throw new Error("Invalid answer payload.");
   }
@@ -106,10 +108,10 @@ export async function submitMockExam(
   );
 
   const seen = new Set<string>();
-  const validatedAnswers: { questionId: string; selectedIndex: number | null; isCorrect: boolean }[] = [];
+  const validatedAnswers: { questionId: string; selectedIndex: number | null }[] = [];
 
   for (const answer of answers) {
-    if (seen.has(answer.questionId)) continue;
+    if (!answer || typeof answer.questionId !== "string" || seen.has(answer.questionId)) continue;
     const question = allowedQuestions.get(answer.questionId);
     if (!question) continue;
 
@@ -124,17 +126,13 @@ export async function submitMockExam(
       throw new Error("Invalid answer selection.");
     }
 
-    const correctIndex = Number(question?.correct_index);
-    const isCorrect = selectedIndex !== null && Number.isInteger(correctIndex) && selectedIndex === correctIndex;
-
-    validatedAnswers.push({ questionId: answer.questionId, selectedIndex, isCorrect });
+    validatedAnswers.push({ questionId: answer.questionId, selectedIndex });
   }
 
   if (validatedAnswers.length !== examQuestions.length) {
-    // Missing answers are allowed, but never count as correct.
     for (const row of examQuestions) {
       if (!seen.has(row.question_id)) {
-        validatedAnswers.push({ questionId: row.question_id, selectedIndex: null, isCorrect: false });
+        validatedAnswers.push({ questionId: row.question_id, selectedIndex: null });
       }
     }
   }
@@ -143,29 +141,24 @@ export async function submitMockExam(
     attempt_id: attemptId,
     question_id: answer.questionId,
     selected_index: answer.selectedIndex,
-    is_correct: answer.isCorrect,
+    is_correct: false,
   }));
 
   const { error: answersError } = await supabase.from("mock_exam_answers").insert(answerRows);
   if (answersError) throw new Error("Unable to save mock exam answers.");
 
-  const correctCount = answerRows.filter((answer) => answer.is_correct).length;
-  const totalQuestions = examQuestions.length;
-  const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+  const { data: finalized, error: finalizeError } = await supabase.rpc("finalize_mock_exam_attempt", {
+    p_attempt_id: attemptId,
+  });
 
-  const { error: updateError } = await supabase
-    .from("mock_exam_attempts")
-    .update({
-      submitted_at: new Date().toISOString(),
-      score,
-      correct_count: correctCount,
-      time_taken_seconds: timeTakenSeconds,
-    })
-    .eq("id", attemptId)
-    .eq("student_id", user.id)
-    .is("submitted_at", null);
+  if (finalizeError || !finalized?.[0]) {
+    throw new Error(finalizeError?.message === "The mock exam time limit has been exceeded"
+      ? finalizeError.message
+      : "Unable to finalize the mock exam.");
+  }
 
-  if (updateError) throw new Error("Unable to finalize the mock exam.");
-
-  return { score, correctCount };
+  return {
+    score: Number(finalized[0].score),
+    correctCount: Number(finalized[0].correct_count),
+  };
 }
