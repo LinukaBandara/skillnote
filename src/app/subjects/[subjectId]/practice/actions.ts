@@ -8,8 +8,7 @@ import { revalidatePath } from "next/cache";
 export async function submitQuestionAttempt(
   questionId: string,
   subjectId: string,
-  selectedIndex: number,
-  _clientCorrectIndex: number
+  selectedIndex: number
 ) {
   const supabase = await createClient();
   const {
