@@ -26,7 +26,7 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: P
   const [{ data: sections }, { data: questions }] = await Promise.all([
     selectedPaperId
       ? supabase.from("paper_sections").select("id,title,code,position,marks,paper_questions(id,question_id,question_number,position,marks,is_required,questions(question_text,question_type,difficulty))").eq("paper_id", selectedPaperId).order("position")
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as never[] }),
     selectedSeries
       ? supabase.from("questions").select("id,question_text,question_type,difficulty,marks,review_status").eq("subject_id", selectedSeries.subject_id).in("review_status", ["approved", "published"]).order("created_at", { ascending: false }).limit(100)
       : Promise.resolve({ data: [] as any[] }),
