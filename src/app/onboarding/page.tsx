@@ -33,9 +33,18 @@ export default async function OnboardingPage() {
     .from("subjects")
     .select("*")
     .order("name");
+  const { data: subjectStreamRows } = await supabase
+    .from("subject_streams")
+    .select("subject_id, stream_id");
 
   const streamList = (streams ?? []) as Stream[];
   const subjectList = (subjects ?? []) as Subject[];
+  const streamIdsBySubject = new Map<string, Set<string>>();
+  for (const row of subjectStreamRows ?? []) {
+    const ids = streamIdsBySubject.get(row.subject_id) ?? new Set<string>();
+    ids.add(row.stream_id);
+    streamIdsBySubject.set(row.subject_id, ids);
+  }
   const currentYear = new Date().getFullYear();
   const yearOptions = [currentYear, currentYear + 1, currentYear + 2];
 
@@ -97,7 +106,7 @@ export default async function OnboardingPage() {
             <label className="block text-sm font-medium mb-3">Your subjects</label>
             <div className="space-y-6">
               {streamList.map((stream) => {
-                const streamSubjects = subjectList.filter((s) => s.stream_id === stream.id);
+                const streamSubjects = subjectList.filter((s) => streamIdsBySubject.get(s.id)?.has(stream.id));
                 if (streamSubjects.length === 0) return null;
                 return (
                   <div key={stream.id}>
