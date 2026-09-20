@@ -6,6 +6,7 @@ import { MaybeShell } from "@/components/dashboard/MaybeShell";
 
 export default async function MockExamsListPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ subjectId: string }>;
   searchParams: Promise<{ attemptId?: string }>;
@@ -18,7 +19,7 @@ export default async function MockExamsListPage({
   const { data: subject } = await supabase.from("subjects").select("*").eq("id", subjectId).single();
   if (!subject) notFound();
 
-  let completedAttempt: { score: number; correct_count: number; total_questions: number; time_taken_seconds: number } | null = null;
+  let completedAttempt: { score: number | null; correct_count: number | null; total_questions: number | null; time_taken_seconds: number | null } | null = null;
   let completedExamTitle = "";
   if (attemptId && profile) {
     const { data: attempt } = await supabase
@@ -66,7 +67,7 @@ export default async function MockExamsListPage({
           <div className="grid grid-cols-3 gap-4 mt-5">
             <div><p className="text-xs text-ink-faint">Score</p><p className="text-2xl font-bold">{completedAttempt.score}%</p></div>
             <div><p className="text-xs text-ink-faint">Correct</p><p className="text-2xl font-bold">{completedAttempt.correct_count}/{completedAttempt.total_questions}</p></div>
-            <div><p className="text-xs text-ink-faint">Time</p><p className="text-2xl font-bold">{Math.floor(completedAttempt.time_taken_seconds / 60)}m</p></div>
+            <div><p className="text-xs text-ink-faint">Time</p><p className="text-2xl font-bold">{Math.floor((completedAttempt.time_taken_seconds ?? 0) / 60)}m</p></div>
           </div>
           <div className="flex flex-wrap gap-3 mt-5">
             <Link href="/skill-insights" className="text-xs text-cobalt border-b border-cobalt/30">View Skill Insights</Link>
