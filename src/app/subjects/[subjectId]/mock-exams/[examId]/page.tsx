@@ -19,13 +19,13 @@ export default async function MockExamPage({
 
   const { data: examQuestions } = await supabase
     .from("mock_exam_questions")
-    .select("position, questions(*)")
+    .select("position, questions(id,question_text,options)")
     .eq("mock_exam_id", examId)
     .order("position");
 
   const questions = (examQuestions ?? [])
     .map((eq) => eq.questions)
-    .filter(Boolean) as unknown as { id: string; question_text: string; options: string[]; correct_index: number }[];
+    .filter(Boolean) as unknown as { id: string; question_text: string; options: string[] }[];
 
   if (questions.length === 0) {
     return (
