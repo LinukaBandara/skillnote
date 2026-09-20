@@ -44,13 +44,13 @@ export default async function Home() {
   return (
     <div className="overflow-hidden">
       {/* Hero */}
-      <section className="relative">
-        <div className="absolute inset-x-0 top-0 -z-10 h-[620px] bg-[radial-gradient(circle_at_72%_24%,rgba(108,126,240,0.18),transparent_34%),radial-gradient(circle_at_15%_20%,rgba(139,127,232,0.10),transparent_28%)]" />
-        <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 md:pt-28 md:pb-32">
-          <div className="grid lg:grid-cols-[1fr_0.9fr] gap-14 lg:gap-20 items-center">
+      <section className="relative lg:min-h-[calc(100svh-4rem)] lg:flex lg:items-center">
+        <div className="absolute inset-x-0 top-0 -z-10 h-full min-h-[620px] bg-[radial-gradient(circle_at_72%_24%,rgba(108,126,240,0.18),transparent_34%),radial-gradient(circle_at_15%_20%,rgba(139,127,232,0.10),transparent_28%)]" />
+        <div className="max-w-6xl mx-auto w-full px-5 sm:px-6 py-14 sm:py-20 lg:py-10">
+          <div className="grid lg:grid-cols-[1fr_0.9fr] gap-12 lg:gap-16 xl:gap-20 items-center">
             <div>
               <div className="section-label mb-5">G.C.E. Advanced Level · Sri Lanka</div>
-              <h1 className="text-[3.4rem] sm:text-[4.5rem] lg:text-[5.2rem] leading-[0.98] font-semibold tracking-[-0.055em] text-ink">
+              <h1 className="text-[3rem] leading-[1] sm:text-[4.2rem] sm:leading-[0.98] lg:text-[4.8rem] xl:text-[5.2rem] font-semibold tracking-[-0.055em] text-ink">
                 Study less
                 <br />
                 <span className="text-cobalt">blindly.</span>
