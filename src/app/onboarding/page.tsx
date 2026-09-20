@@ -71,6 +71,30 @@ export default async function OnboardingPage() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium mb-3">App language</label>
+          <div className="flex gap-2">
+            {([
+              ["en", "English"],
+              ["si", "සිංහල"],
+              ["ta", "தமிழ்"],
+            ] as const).map(([code, label]) => (
+              <label key={code} className="flex-1">
+                <input
+                  type="radio"
+                  name="preferred_language"
+                  value={code}
+                  defaultChecked={code === "en"}
+                  className="peer sr-only"
+                />
+                <div className="text-center py-2.5 rounded-full border border-rule text-sm cursor-pointer peer-checked:bg-ink peer-checked:text-white peer-checked:border-ink transition-colors">
+                  {label}
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
           <label className="block text-sm font-medium mb-3">Your subjects</label>
           <div className="space-y-6">
             {streamList.map((stream) => {
