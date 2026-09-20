@@ -34,7 +34,7 @@ export default async function NavBar() {
         </Link>
 
         <nav className="flex items-center gap-7 text-sm">
-          <Link href="/subjects" className="text-ink-soft hover:text-ink transition-colors">
+          <Link href="/subjects" className="hidden sm:block text-ink-soft hover:text-ink transition-colors">
             Subjects
           </Link>
 
@@ -61,7 +61,7 @@ export default async function NavBar() {
               </Link>
               <Link
                 href="/signup"
-                className="btn-primary px-4 py-2 rounded-full text-sm font-medium"
+                className="btn-primary px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap"
               >
                 Get started
               </Link>
