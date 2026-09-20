@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import ConditionalNavBar from "@/components/ConditionalNavBar";
+import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import NextTopLoader from "nextjs-toploader";
 
@@ -14,7 +14,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
         <NextTopLoader color="#2C4BE0" height={2.5} showSpinner={false} shadow="0 0 8px #2C4BE0" />
-        <ConditionalNavBar />
+        <NavBar />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>
