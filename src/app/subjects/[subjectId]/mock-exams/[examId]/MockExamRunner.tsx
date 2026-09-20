@@ -21,7 +21,7 @@ export function MockExamRunner({
   questions: Question[];
   attemptId: string;
   subjectId: string;
-  examId: string;
+  examId?: string;
   durationMinutes: number;
 }) {
   const router = useRouter();
@@ -51,7 +51,7 @@ export function MockExamRunner({
     }));
     await submitMockExam(attemptId, payload, timeTaken);
     router.push(`/subjects/${subjectId}/mock-exams?attemptId=${attemptId}`);
-  }, [answers, questions, attemptId, subjectId, examId, router]);
+  }, [answers, questions, attemptId, subjectId, router]);
 
   useEffect(() => {
     if (secondsLeft <= 0) {
