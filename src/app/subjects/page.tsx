@@ -14,9 +14,18 @@ export default async function SubjectsPage({
   const profile = await getCurrentProfile();
   const { data: streams } = await supabase.from("streams").select("*").order("name");
   const { data: subjects } = await supabase.from("subjects").select("*").order("name");
+  const { data: subjectStreamRows } = await supabase
+    .from("subject_streams")
+    .select("subject_id, stream_id");
 
   const streamList = (streams ?? []) as Stream[];
   let subjectList = (subjects ?? []) as Subject[];
+  const streamIdsBySubject = new Map<string, Set<string>>();
+  for (const row of subjectStreamRows ?? []) {
+    const ids = streamIdsBySubject.get(row.subject_id) ?? new Set<string>();
+    ids.add(row.stream_id);
+    streamIdsBySubject.set(row.subject_id, ids);
+  }
 
   if (q) {
     subjectList = subjectList.filter((s) => s.name.toLowerCase().includes(q.toLowerCase()));
@@ -36,7 +45,7 @@ export default async function SubjectsPage({
           </p>
         ) : (
           streamList.map((stream) => {
-          const streamSubjects = subjectList.filter((s) => s.stream_id === stream.id);
+          const streamSubjects = subjectList.filter((s) => streamIdsBySubject.get(s.id)?.has(stream.id));
           if (streamSubjects.length === 0) return null;
           return (
             <div key={stream.id}>
