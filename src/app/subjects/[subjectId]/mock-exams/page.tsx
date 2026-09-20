@@ -8,13 +8,32 @@ export default async function MockExamsListPage({
   params,
 }: {
   params: Promise<{ subjectId: string }>;
+  searchParams: Promise<{ attemptId?: string }>;
 }) {
   const { subjectId } = await params;
+  const { attemptId } = await searchParams;
   const supabase = await createClient();
   const profile = await getCurrentProfile();
 
   const { data: subject } = await supabase.from("subjects").select("*").eq("id", subjectId).single();
   if (!subject) notFound();
+
+  let completedAttempt: { score: number; correct_count: number; total_questions: number; time_taken_seconds: number } | null = null;
+  let completedExamTitle = "";
+  if (attemptId && profile) {
+    const { data: attempt } = await supabase
+      .from("mock_exam_attempts")
+      .select("score, correct_count, total_questions, time_taken_seconds, mock_exams(title)")
+      .eq("id", attemptId)
+      .eq("student_id", profile.id)
+      .not("submitted_at", "is", null)
+      .maybeSingle();
+    if (attempt) {
+      completedAttempt = attempt;
+      const examRelation = Array.isArray(attempt.mock_exams) ? attempt.mock_exams[0] : attempt.mock_exams;
+      completedExamTitle = examRelation?.title ?? "Mock exam";
+    }
+  }
 
   const { data: exams } = await supabase
     .from("mock_exams")
@@ -40,6 +59,21 @@ export default async function MockExamsListPage({
         ← {subject.name}
       </Link>
       <h1 className="text-2xl font-semibold mt-6 mb-1">Mock exams</h1>
+      {completedAttempt && (
+        <div className="clay p-6 my-6">
+          <p className="section-label mb-2">Mock exam complete</p>
+          <h2 className="text-lg font-semibold mb-1">{completedExamTitle}</h2>
+          <div className="grid grid-cols-3 gap-4 mt-5">
+            <div><p className="text-xs text-ink-faint">Score</p><p className="text-2xl font-bold">{completedAttempt.score}%</p></div>
+            <div><p className="text-xs text-ink-faint">Correct</p><p className="text-2xl font-bold">{completedAttempt.correct_count}/{completedAttempt.total_questions}</p></div>
+            <div><p className="text-xs text-ink-faint">Time</p><p className="text-2xl font-bold">{Math.floor(completedAttempt.time_taken_seconds / 60)}m</p></div>
+          </div>
+          <div className="flex flex-wrap gap-3 mt-5">
+            <Link href="/skill-insights" className="text-xs text-cobalt border-b border-cobalt/30">View Skill Insights</Link>
+            <Link href="/study-plan" className="text-xs text-cobalt border-b border-cobalt/30">Open Study Plan</Link>
+          </div>
+        </div>
+      )}
       <p className="text-ink-soft mb-10 text-sm">
         Timed, exam-style practice for {subject.name}.
       </p>
