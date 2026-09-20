@@ -38,17 +38,26 @@ export default async function PracticePage({ params, searchParams }: { params: P
   const { data: topicTranslations } = topicIds.length ? await supabase.from("syllabus_topic_translations").select("topic_id, language_code, title").in("topic_id", topicIds).eq("status", "published") : { data: [] as { topic_id: string; language_code: string; title: string | null }[] };
   const translationMap = new Map<string, { language_code: string; title: string | null }[]>();
   for (const row of topicTranslations ?? []) { const existing = translationMap.get(row.topic_id) ?? []; existing.push(row); translationMap.set(row.topic_id, existing); }
-  const { data: yearsRaw } = await supabase.from("questions").select("year").eq("subject_id", subjectId).not("year", "is", null);
+  const { data: yearsRaw } = await supabase.from("questions").select("year").eq("subject_id", subjectId).eq("review_status", "PUBLISHED").not("year", "is", null);
   const years = Array.from(new Set((yearsRaw ?? []).map((r) => r.year))).sort((a, b) => (b ?? 0) - (a ?? 0));
   let mastery: { topic_id: string; mastery: number; due_at: string }[] = [];
   if (profile && topicIds.length > 0) { const { data } = await supabase.from("topic_mastery").select("topic_id, mastery, due_at").eq("student_id", profile.id).in("topic_id", topicIds); mastery = data ?? []; }
   const avgMastery = mastery.length > 0 ? Math.round(mastery.reduce((a, m) => a + m.mastery, 0) / mastery.length) : null;
-  let query = supabase.from("questions").select("*").eq("subject_id", subjectId);
+  let adaptiveIds: string[] | null = null;
+  if (mode === "adaptive" && profile) {
+    const { data: adaptiveQueue } = await supabase.rpc("get_adaptive_practice_questions", {
+      p_student_id: profile.id,
+      p_subject_id: subjectId,
+      p_limit: 30,
+    });
+    adaptiveIds = (adaptiveQueue ?? []).map((row) => row.question_id);
+  }
+  let query = supabase.from("questions").select("*").eq("subject_id", subjectId).eq("review_status", "PUBLISHED");
+  if (adaptiveIds) query = adaptiveIds.length > 0 ? query.in("id", adaptiveIds) : query.eq("id", "00000000-0000-0000-0000-000000000000");
   if (topic) query = query.eq("topic_id", topic);
   if (year) query = query.eq("year", Number(year));
   if (difficulty) query = query.eq("difficulty", difficulty);
-  if (mode === "adaptive" && avgMastery !== null) query = query.eq("difficulty", avgMastery < 50 ? "easy" : avgMastery < 75 ? "medium" : "hard");
-  else if (mode === "weak") { const weakTopics = mastery.filter((m) => m.mastery < 50).map((m) => m.topic_id); query = weakTopics.length > 0 ? query.in("topic_id", weakTopics) : query.eq("topic_id", "00000000-0000-0000-0000-000000000000"); }
+  if (mode === "weak") { const weakTopics = mastery.filter((m) => m.mastery < 50).map((m) => m.topic_id); query = weakTopics.length > 0 ? query.in("topic_id", weakTopics) : query.eq("topic_id", "00000000-0000-0000-0000-000000000000"); }
   else if (mode === "revision") { const dueTopics = mastery.filter((m) => new Date(m.due_at) <= new Date()).map((m) => m.topic_id); query = dueTopics.length > 0 ? query.in("topic_id", dueTopics) : query.eq("topic_id", "00000000-0000-0000-0000-000000000000"); }
   const { data: questions } = await query;
   const questionIds = (questions ?? []).map((question) => question.id);
