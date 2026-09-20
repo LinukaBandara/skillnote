@@ -62,7 +62,7 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: P
           {(seriesList ?? []).map((s) => (
             <a key={s.id} href={`/admin/exams?series=${s.id}`} className={`block border border-rule rounded-xl p-4 ${selectedSeries?.id === s.id ? "bg-surface" : ""}`}>
               <div className="flex items-start justify-between gap-4">
-                <div><p className="text-sm font-medium">{s.title}</p><p className="text-xs text-ink-soft mt-1">{s.subjects?.name} · {s.exam_year ?? "Year not set"} · {s.papers?.length ?? 0} paper{(s.papers?.length ?? 0) === 1 ? "" : "s"}</p></div>
+                <div><p className="text-sm font-medium">{s.title}</p><p className="text-xs text-ink-soft mt-1">{s.subjects?.[0]?.name} · {s.exam_year ?? "Year not set"} · {s.papers?.length ?? 0} paper{(s.papers?.length ?? 0) === 1 ? "" : "s"}</p></div>
                 <span className="text-xs text-ink-faint capitalize">{s.review_status}</span>
               </div>
             </a>
@@ -120,7 +120,7 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: P
               <div key={section.id} className="border border-rule rounded-xl p-5 mb-5">
                 <div className="flex justify-between mb-4"><div><p className="text-sm font-medium">{section.code ? `${section.code} · ` : ""}{section.title}</p><p className="text-xs text-ink-soft mt-1">{section.marks ?? ""} marks</p></div><span className="text-xs text-ink-faint">Section {section.position}</span></div>
                 <div className="space-y-2 mb-5">
-                  {(section.paper_questions ?? []).map((pq) => <div key={pq.id} className="text-sm border-t border-rule pt-2"><span className="font-medium">{pq.question_number}.</span> {pq.questions?.question_text} <span className="text-xs text-ink-faint">· {pq.questions?.question_type} · {pq.marks ?? ""} marks</span></div>)}
+                  {(section.paper_questions ?? []).map((pq: { id: string; question_number: string | null; marks: number | null; questions: { question_text: string; question_type: string; difficulty: string }[] | null }) => <div key={pq.id} className="text-sm border-t border-rule pt-2"><span className="font-medium">{pq.question_number}.</span> {pq.questions?.question_text} <span className="text-xs text-ink-faint">· {pq.questions?.question_type} · {pq.marks ?? ""} marks</span></div>)}
                 </div>
                 <form action={addQuestionToPaper} className="grid gap-3 md:grid-cols-2">
                   <input type="hidden" name="section_id" value={section.id} />
