@@ -138,12 +138,6 @@ export default async function Home() {
                   </div>
                 </div>
               </div>
-              <div className="hidden sm:block absolute -right-8 -bottom-7 clay px-5 py-4 w-48">
-                <div className="text-[10px] uppercase tracking-widest text-ink-faint">Readiness</div>
-                <div className="flex items-end justify-between mt-2">
-                  <span className="text-2xl font-semibold">68%</span>
-                  <span className="text-xs text-cobalt font-medium">Building</span>
-                </div>
               </div>
             </div>
           </div>
