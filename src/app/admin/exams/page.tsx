@@ -29,7 +29,7 @@ export default async function AdminExamsPage({ searchParams }: { searchParams: P
       : Promise.resolve({ data: [] as never[] }),
     selectedSeries
       ? supabase.from("questions").select("id,question_text,question_type,difficulty,marks,review_status").eq("subject_id", selectedSeries.subject_id).in("review_status", ["approved", "published"]).order("created_at", { ascending: false }).limit(100)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
   return (
