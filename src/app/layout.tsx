@@ -4,32 +4,9 @@ import NavBar from "@/components/NavBar";
 import Footer from "@/components/Footer";
 import NextTopLoader from "nextjs-toploader";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://skillnote.lk";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: "Skill Note — Smart learning for Sri Lankan A/L students",
-    template: "%s | Skill Note",
-  },
-  description:
-    "Learn, practice and improve with syllabus tracking, assessments, revision and performance insights for G.C.E. Advanced Level students in Sri Lanka.",
-  applicationName: "Skill Note",
-  robots: { index: true, follow: true },
-  openGraph: {
-    type: "website",
-    siteName: "Skill Note",
-    title: "Skill Note — Smart learning for Sri Lankan A/L students",
-    description: "Learn, practice and improve with structured A/L learning tools.",
-    url: siteUrl,
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Skill Note — Smart learning for Sri Lankan A/L students" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Skill Note — Smart learning for Sri Lankan A/L students",
-    description: "Learn, practice and improve with structured A/L learning tools.",
-    images: ["/opengraph-image"],
-  },
+  title: "Skill Note — Smart learning for Sri Lankan A/L students",
+  description: "Learn. Practice. Improve. Syllabus tracking, past papers, and performance insights for G.C.E. Advanced Level students.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
