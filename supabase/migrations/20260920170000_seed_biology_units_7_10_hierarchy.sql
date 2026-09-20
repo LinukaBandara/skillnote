@@ -1,0 +1,3 @@
+-- Biology Units 7-10 hierarchy, GCE A/L 2017 (NIE)
+-- Source: National Institute of Education Biology syllabus implemented from 2017.
+-- Creates competency -> competency level -> topic -> subtopic -> learning outcome links.
