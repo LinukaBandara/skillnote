@@ -87,7 +87,7 @@ export async function submitMockExam(
   if (attemptError || !attempt) throw new Error("Mock exam attempt not found.");
   if (attempt.submitted_at) throw new Error("This mock exam has already been submitted.");
 
-  const durationMinutes = Number(attempt.mock_exams?.duration_minutes ?? 0);
+  const durationMinutes = Number(attempt.mock_exams?.[0]?.duration_minutes ?? 0);
   if (durationMinutes > 0 && timeTakenSeconds > durationMinutes * 60 + 30) {
     throw new Error("The mock exam time limit has been exceeded.");
   }
@@ -103,7 +103,7 @@ export async function submitMockExam(
   const allowedQuestions = new Map(
     examQuestions.map((row) => [
       row.question_id,
-      row.questions,
+      row.questions?.[0],
     ])
   );
 
