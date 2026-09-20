@@ -207,3 +207,29 @@ h1, h2, h3 {
     0 12px 24px rgba(26, 34, 70, 0.05),
     0 40px 80px -28px rgba(79, 95, 224, 0.25);
 }
+
+
+/* Global viewport safety — prevents mobile horizontal scrolling */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body {
+  min-width: 0;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+}
+
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 639px) {
+  .max-w-6xl {
+    width: 100%;
+  }
+}
