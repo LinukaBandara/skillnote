@@ -8,7 +8,7 @@ interface Question {
   id: string;
   question_text: string;
   options: string[];
-  correct_index: number;
+
 }
 
 export function MockExamRunner({
@@ -47,7 +47,7 @@ export function MockExamRunner({
     const payload = questions.map((q, i) => ({
       questionId: q.id,
       selectedIndex: answers[i],
-      correctIndex: q.correct_index,
+      correctIndex: -1,
     }));
     await submitMockExam(attemptId, payload, timeTaken);
     router.push(`/subjects/${subjectId}/mock-exams?attemptId=${attemptId}`);
