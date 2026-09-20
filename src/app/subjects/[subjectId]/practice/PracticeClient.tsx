@@ -64,7 +64,7 @@ export function PracticeClient({
     if (revealed || submitting) return;
     setSelected(i);
     setSubmitting(true);
-    const result = await submitQuestionAttempt(question.id, subjectId, i, question.correct_index);
+    const result = await submitQuestionAttempt(question.id, subjectId, i);
     setScore((s) => ({
       correct: s.correct + (result.isCorrect ? 1 : 0),
       total: s.total + 1,
