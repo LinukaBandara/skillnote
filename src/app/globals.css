@@ -1,37 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #111318;
-  --ink: #111318;
-  --ink-soft: #4b5563;
-  --ink-faint: #6b7280;
-  --line: #e5e7eb;
-  --surface: #ffffff;
-  --surface-soft: #f7f8fa;
-  --accent: #2c4be0;
-  --accent-soft: #eef2ff;
+  /* Indigo/violet palette, lavender-gray background — matches reference dashboard */
+  --cobalt: #4F5FE0;
+  --cobalt-deep: #333F9E;
+  --cobalt-bright: #6C7EF0;
+  --lilac: #8B7FE8;
+  --butter: #E8748C;
+  --bg-warm: #EBECF5;
+  --surface: #FFFFFF;
+  --ink: #1A2246;
+  --ink-soft: #8891A5;
+  --ink-faint: #AEB4C4;
+  --rule: #E3E5F2;
+
+  --paper: var(--surface);
+  --amber: var(--butter);
+  --sage: #2F8F65;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: Arial, Helvetica, sans-serif;
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-deep: var(--cobalt-deep);
+  --color-cobalt-bright: var(--cobalt-bright);
+  --color-lilac: var(--lilac);
+  --color-butter: var(--butter);
+  --color-bg-warm: var(--bg-warm);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-paper: var(--paper);
+  --color-amber: var(--amber);
+  --color-sage: var(--sage);
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Instrument Serif', serif;
 }
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--background); color: var(--foreground); }
-a { color: inherit; text-decoration: none; }
-button, input, textarea, select { font: inherit; }
-button, a { -webkit-tap-highlight-color: transparent; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-::selection { background: #dbe4ff; color: var(--ink); }
-.section-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
-.text-ink { color: var(--ink); }
-.text-ink-soft { color: var(--ink-soft); }
-.text-ink-faint { color: var(--ink-faint); }
+body {
+  background: var(--bg-warm);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.006em;
+}
+
+h1, h2, h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+/* Editorial numeral / stat treatment — quiet serif italic, not a UI font */
+.stat-serif {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Quiet surface: thin hairline, faint shadow — depth without noise */
+.clay {
+  background: var(--surface);
+  border-radius: 20px;
+  border: 1px solid var(--rule);
+  box-shadow:
+    0 1px 1px rgba(26, 34, 70, 0.03),
+    0 2px 6px rgba(26, 34, 70, 0.04),
+    0 20px 40px -18px rgba(79, 95, 224, 0.22);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.clay:hover {
+  box-shadow:
+    0 1px 1px rgba(26, 34, 70, 0.03),
+    0 4px 10px rgba(26, 34, 70, 0.05),
+    0 26px 48px -18px rgba(79, 95, 224, 0.28);
+}
+
+.clay-inset {
+  background: var(--bg-warm);
+  border-radius: 14px;
+}
+
+.shell {
+  background: var(--surface);
+  border-radius: 28px;
+  box-shadow:
+    0 2px 4px rgba(26, 34, 70, 0.03),
+    0 12px 24px rgba(26, 34, 70, 0.05),
+    0 40px 80px -24px rgba(79, 95, 224, 0.22);
+}
+
+.btn-primary {
+  background: var(--cobalt);
+  color: white;
+  box-shadow: 0 6px 14px -4px rgba(79, 95, 224, 0.5);
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--cobalt-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px -4px rgba(79, 95, 224, 0.55);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-outline {
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.btn-outline:hover {
+  border-color: var(--ink-faint);
+  background: var(--surface);
+}
+
+.gradient-card-1 {
+  background: linear-gradient(135deg, var(--cobalt-bright), var(--cobalt-deep));
+  color: white;
+}
+.gradient-card-2 {
+  background: linear-gradient(135deg, var(--lilac), #5B4FC4);
+  color: white;
+}
+.gradient-card-3 {
+  background: linear-gradient(135deg, var(--butter), #B84A66);
+  color: white;
+}
+.gradient-card-1, .gradient-card-2, .gradient-card-3 {
+  border-radius: 20px;
+  box-shadow: 0 16px 32px -14px rgba(26, 34, 70, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gradient-card-1:hover, .gradient-card-2:hover, .gradient-card-3:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 40px -14px rgba(26, 34, 70, 0.4);
+}
+
+.highlight-bar {
+  background: linear-gradient(90deg, var(--cobalt) var(--pct, 0%), var(--rule) var(--pct, 0%));
+  height: 3px;
+  border-radius: 999px;
+}
+
+.highlight-bar-light {
+  background: linear-gradient(90deg, rgba(255,255,255,0.95) var(--pct, 0%), rgba(255,255,255,0.28) var(--pct, 0%));
+  height: 6px;
+  border-radius: 999px;
+}
+
+.hairline {
+  border-color: var(--rule);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* Small uppercase section labels */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Premium form controls */
+.field {
+  width: 100%;
+  background: var(--bg-warm);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+.field::placeholder { color: var(--ink-faint); }
+.field:focus {
+  outline: none;
+  background: var(--surface);
+  border-color: var(--cobalt);
+  box-shadow: 0 0 0 3px rgba(79, 95, 224, 0.12);
+}
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+/* Auth card */
+.auth-card {
+  background: var(--surface);
+  border-radius: 24px;
+  border: 1px solid var(--rule);
+  box-shadow:
+    0 2px 4px rgba(26, 34, 70, 0.03),
+    0 12px 24px rgba(26, 34, 70, 0.05),
+    0 40px 80px -28px rgba(79, 95, 224, 0.25);
 }
