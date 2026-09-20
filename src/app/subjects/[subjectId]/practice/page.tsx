@@ -50,7 +50,7 @@ export default async function PracticePage({ params, searchParams }: { params: P
       p_subject_id: subjectId,
       p_limit: 30,
     });
-    adaptiveIds = (adaptiveQueue ?? []).map((row) => row.question_id);
+    adaptiveIds = (adaptiveQueue ?? []).map((row: { question_id: string }) => row.question_id);
   }
   let query = supabase.from("questions").select("*").eq("subject_id", subjectId).eq("review_status", "PUBLISHED");
   if (adaptiveIds) query = adaptiveIds.length > 0 ? query.in("id", adaptiveIds) : query.eq("id", "00000000-0000-0000-0000-000000000000");
