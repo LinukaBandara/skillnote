@@ -9,6 +9,7 @@ begin
     select
       n.nspname as schema_name,
       cl.relname as table_name,
+      c.conname,
       string_agg(format('%I', a.attname), ', ' order by u.ord) as columns,
       string_agg(a.attname, '_' order by u.ord) as column_suffix
     from pg_constraint c
@@ -33,7 +34,7 @@ begin
             from unnest(c.conkey) with ordinality z(x, ord)
           )
       )
-    group by n.nspname, cl.relname
+    group by n.nspname, cl.relname, c.conname
   loop
     index_name := left(
       'idx_' || r.table_name || '_' || r.column_suffix || '_fk',
