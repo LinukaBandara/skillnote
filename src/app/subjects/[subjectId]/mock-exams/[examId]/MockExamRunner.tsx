@@ -50,7 +50,7 @@ export function MockExamRunner({
       correctIndex: q.correct_index,
     }));
     await submitMockExam(attemptId, payload, timeTaken);
-    router.push(`/subjects/${subjectId}/mock-exams/${examId}/results/${attemptId}`);
+    router.push(`/subjects/${subjectId}/mock-exams?attemptId=${attemptId}`);
   }, [answers, questions, attemptId, subjectId, examId, router]);
 
   useEffect(() => {
