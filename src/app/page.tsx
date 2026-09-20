@@ -7,24 +7,28 @@ const features = [
     title: "Track the syllabus",
     text: "Turn the full A/L syllabus into a living checklist. See every unit, topic and learning outcome move from not started to mastered.",
     tag: "Syllabus",
+    href: "/subjects",
   },
   {
     number: "02",
     title: "Practice with purpose",
     text: "Practice questions are connected to your progress, so weak areas get attention instead of another round of questions you already know.",
     tag: "Practice",
+    href: "/subjects",
   },
   {
     number: "03",
     title: "Know your weak points",
     text: "Skill Insights turns attempts into a clear picture of accuracy, mastery, developing skills and topics that need revision.",
     tag: "Insights",
+    href: "/skill-insights",
   },
   {
     number: "04",
     title: "Prepare with mock exams",
     text: "Use timed mock exams to test your readiness, review answers and understand where your marks are being lost.",
     tag: "Exams",
+    href: "/subjects",
   },
 ];
 
@@ -181,6 +185,7 @@ export default async function Home() {
               <h3 className="text-2xl mt-12">{feature.title}</h3>
               <p className="mt-3 text-sm leading-6 text-ink-soft max-w-lg">{feature.text}</p>
               <div className="mt-7 h-px bg-rule group-hover:bg-cobalt/30 transition-colors" />
+              <Link href={feature.href} className="inline-flex mt-5 text-sm font-medium text-cobalt">Explore {feature.tag.toLowerCase()} <span className="ml-2">→</span></Link>
             </div>
           ))}
         </div>
@@ -354,6 +359,7 @@ export default async function Home() {
                 </div>
               ))}
             </div>
+            <Link href="/study-plan" className="inline-flex mt-6 text-sm font-medium text-cobalt">Open study plan <span className="ml-2">→</span></Link>
           </div>
 
           <div className="clay p-7 md:p-9">
@@ -376,6 +382,7 @@ export default async function Home() {
                 <span>Verified achievement</span>
                 <span>SN-AL-2048</span>
               </div>
+              <Link href="/subjects" className="inline-flex mt-6 text-sm font-medium text-cobalt">Explore learning <span className="ml-2">→</span></Link>
             </div>
           </div>
         </div>
@@ -427,6 +434,7 @@ export default async function Home() {
               <div className="h-9 w-9 rounded-xl bg-bg-warm flex items-center justify-center text-xs font-bold text-cobalt">0{i + 1}</div>
               <h3 className="text-xl mt-8">{title}</h3>
               <p className="text-sm text-ink-soft leading-6 mt-3">{text}</p>
+              <Link href={i === 0 ? "/subjects" : i === 1 ? "/teacher" : "/admin"} className="inline-flex mt-6 text-sm font-medium text-cobalt">Explore {title.toLowerCase()} <span className="ml-2">→</span></Link>
             </div>
           ))}
         </div>
