@@ -87,7 +87,7 @@ export async function submitMockExam(
   if (attemptError || !attempt) throw new Error("Mock exam attempt not found.");
   if (attempt.submitted_at) throw new Error("This mock exam has already been submitted.");
 
-  const durationMinutes = Number(attempt.mock_exams?.duration_minutes ?? 0);
+  const durationMinutes = Number(attempt.mock_exams?.[0]?.duration_minutes ?? 0);
   if (durationMinutes > 0 && timeTakenSeconds > durationMinutes * 60 + 30) {
     throw new Error("The mock exam time limit has been exceeded.");
   }
@@ -121,7 +121,7 @@ export async function submitMockExam(
       throw new Error("Invalid answer selection.");
     }
 
-    const options = Array.isArray(question?.options) ? question.options : [];
+    const options = Array.isArray(question?.[0]?.options) ? question[0].options : [];
     if (selectedIndex !== null && options.length > 0 && selectedIndex >= options.length) {
       throw new Error("Invalid answer selection.");
     }
