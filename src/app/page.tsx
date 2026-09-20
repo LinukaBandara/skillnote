@@ -99,7 +99,7 @@ export default async function Home() {
                   <p className="text-2xl sm:text-3xl font-semibold tracking-[-0.03em] text-ink">
                     3
                   </p>
-                  <p className="text-xs text-ink-faint mt-1">learning media</p>
+                  <p className="text-xs text-ink-faint mt-1">languages</p>
                 </div>
               </div>
             </div>
@@ -242,7 +242,7 @@ export default async function Home() {
             </Link>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-px bg-rule border border-rule">
+          <div className="grid md:grid-cols-3 gap-px bg-[var(--line)] border border-rule">
             {[
               ["Learn", "Courses, modules and lessons", "Build understanding before you measure it."],
               ["Practice", "Question bank and topic practice", "Turn each attempt into evidence about your current level."],
